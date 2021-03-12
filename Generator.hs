@@ -20,6 +20,12 @@ spaces n = take n $ repeat ' '
 between :: String -> String -> String -> String
 between l r str = l ++ str ++ r
 
+trim :: String -> String
+trim [] = []
+trim (x:xs)
+  | x == ' ' = trim xs
+  | otherwise = x:xs
+
 ----------- PRETTY PRINT -----------
 
 prettyPrint :: Indent -> Json -> String
@@ -28,19 +34,21 @@ prettyPrint i (JsonNull) = spaces i ++ "null"
 prettyPrint i (JsonBool True) = spaces i ++ "true"
 prettyPrint i (JsonBool False) = spaces i ++ "false"
 
-prettyPrint i (JsonString str) = spaces i ++ str
+prettyPrint i (JsonString str) = spaces i ++ between "\"" "\"" str
 
 prettyPrint i (JsonNumber num) = spaces i ++ show num
 
 prettyPrint i (JsonArray []) = "[]"
 prettyPrint i (JsonArray elements) =
-  between (spaces i ++ "[\n") ("\n" ++ spaces i ++ "]")
-  (intercalate ",\n" (map (prettyPrint (i + 2)) elements))
+  between (spaces i ++ "[\n") ("\n" ++ spaces i ++ "]") $
+  intercalate ",\n" (map (prettyPrint (i + 2)) elements)
 
 prettyPrint i (JsonObject []) = "{}"
-prettyPrint i (JsonObject [(property, value)]) = undefined
-
-prettyPrint i json = spaces i ++ (generate json)
+prettyPrint i (JsonObject elements) =
+  between (spaces i ++ "{\n") ("\n" ++ spaces i ++ "}") $
+  intercalate ",\n" $
+  map (\(name, value) -> between (spaces (i + 2) ++ "\"") "\"" name ++ ": " ++ trim (prettyPrint (i + 2) value)) elements
+-- TODO: figure out something better than 'trim'
 
 ----------- GENERATION -----------
 
@@ -50,7 +58,7 @@ generate (JsonNull) = "null"
 generate (JsonBool True) = "true"
 generate (JsonBool False) = "false"
 
-generate (JsonString str) = str
+generate (JsonString str) = between "\"" "\"" str
 
 generate (JsonNumber num) = show num
 
@@ -60,5 +68,8 @@ generate (JsonArray elements) =
   (intercalate "," (map (generate) elements))
 
 generate (JsonObject []) = "{}"
-generate (JsonObject [(property, value)]) = undefined
+generate (JsonObject elements) =
+  between "{" "}" $
+  intercalate "," $
+  map (\(name, value) -> between "\"" "\"" name ++ ":" ++ generate value) elements
 

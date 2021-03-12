@@ -12,11 +12,6 @@ module Parser
   -- ) -- TODO: uncomment
 where
 
--- TODO: MAKE SURE IT'S NOT COPYRIGHTED (it sure isn't)
--- https://www.cmi.ac.in/~spsuresh/teaching/prgh15/papers/monadic-parsing.pdf
-
--- TODO: change Maybe to Either, and provide user with error messages
-
 import Control.Applicative
 import Control.Monad (guard)
 
