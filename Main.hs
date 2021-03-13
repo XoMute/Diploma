@@ -6,15 +6,13 @@ import Generator (generate, prettyPrint)
 
 main :: IO ()
 main = do
-  -- jsonStr <- readFile "./test.json"
-  -- let result = parse jsonParser jsonStr
-  -- let json =
-  --       case result of
-  --         Just(json, _) -> json
-  --         _ -> JsonString "Error"
-  -- let generated = prettyPrint 0 json
-  -- putStrLn generated
-  putStrLn "a"
+  jsonStr <- readFile "./test.json"
+  let result = parse jsonParser (inputFrom jsonStr)
+  case result of
+    Right (json, _) -> print json
+    Left error -> print error
+ -- let generated = prettyPrint 0 json
+--  putStrLn generated
 
 -- test :: IO ()
 -- test = do

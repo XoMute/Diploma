@@ -28,6 +28,17 @@ trim (x:xs)
 
 ----------- PRETTY PRINT -----------
 
+-- TODO: try to do that in this way
+-- class (Expr e) => Pretty e where
+--     pretty :: e -> String
+
+-- instance Pretty Const where
+--     pretty (Const x) = show x
+-- instance (Pretty a, Pretty b) => Pretty (Add a b) where
+--     pretty (Add x y) = "(" ++ pretty x ++ " + " ++ pretty y ++ ")"
+-- instance (Pretty a, Pretty b) => Pretty (Mul a b) where
+--     pretty (Mul x y) = pretty x ++ " * " ++ pretty y
+
 prettyPrint :: Indent -> Json -> String
 prettyPrint i (JsonNull) = spaces i ++ "null"
 
