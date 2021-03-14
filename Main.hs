@@ -14,7 +14,14 @@ main = do
  -- let generated = prettyPrint 0 json
 --  putStrLn generated
 
--- test :: IO ()
+testError :: IO ()
+testError = do
+  let jsonStr = "{\"name1\": 2.3e5, \"name2\":}"
+  let result = parse jsonParser (inputFrom jsonStr)
+  -- why the fuck is it so hard to understand how to show correct errors
+  print result
+
+  -- test :: IO ()
 -- test = do
 --   let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": 0}]}}"
 --   let result = parse jsonValue jsonStr

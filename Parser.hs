@@ -54,11 +54,6 @@ instance Applicative Parser where
       (v, rest') <- p rest
       pure (f v, rest')
 
--- try :: Parser a -> Parser a
--- try p = Parser $ \input ->
---   case parse p input of
---     (Left )
-
 instance Alternative (Either ParseError) where
   empty = Left $ ParseError (0, 0) ""
   Left _ <|> r = r
@@ -77,14 +72,15 @@ instance Monad Parser where
       Left error -> Left error
   fail message = Parser $ \input -> Left $ ParseError (pos input) message
 
+-- todo: add error message
+oneOf :: String -> [Parser a] -> Parser a
+oneOf desc = foldl (<|>) err
+  where err = fail $ "Couldn't parse " ++ desc
 
 -- todo: add error message
-oneOf :: [Parser a] -> Parser a
-oneOf = foldl (<|>) empty
-
--- todo: add error message
-manySepBy :: Parser a -> Parser b -> Parser [a]
-manySepBy p delim = manySepBy1 p delim <|> empty --(Left ParseError )
+manySepBy :: String -> Parser a -> Parser b -> Parser [a]
+manySepBy desc p delim = manySepBy1 p delim <|> err
+  where err = fail $ "Couldn't parse " ++ desc
 
 manySepBy1 :: Parser a -> Parser b -> Parser [a]
 manySepBy1 p delim = do
@@ -114,7 +110,7 @@ char c = Parser f
                ParseError (pos input) (errorMessage (quote c) (quote x))
 
 ws :: Parser String
-ws = many $ oneOf [char '\n', char '\r', char '\t', char ' ']
+ws = many $ oneOf "whitespace character"[char '\n', char '\r', char '\t', char ' ']
 
 character :: Parser Char
 character =
@@ -124,15 +120,15 @@ character =
   escape
 
 escape :: Parser Char
-escape =
-  ('"'  <$ string "\\\"") <|>
-  ('\\' <$ string "\\\\") <|>
-  ('/'  <$ string "\\/")  <|>
-  ('\b' <$ string "\\b")  <|>
-  ('\f' <$ string "\\f")  <|>
-  ('\n' <$ string "\\n")  <|>
-  ('\r' <$ string "\\r")  <|>
-  ('\t' <$ string "\\t")--  <|>
+escape = oneOf "escape character" [
+  ('"'  <$ string "\\\""),
+  ('\\' <$ string "\\\\"),
+  ('/'  <$ string "\\/"),
+  ('\b' <$ string "\\b"),
+  ('\f' <$ string "\\f"),
+  ('\n' <$ string "\\n"),
+  ('\r' <$ string "\\r"),
+  ('\t' <$ string "\\t")]--  <|>
 --   (string "\\u" *> escapeUnicode)
 
 -- escapeUnicode :: parserChar
@@ -218,7 +214,7 @@ jsonArray = JsonArray <$>
   (between (const [] <$> ws) (char '[') (char ']')
    <|> between elements (char '[') (char ']'))
   where
-    elements = manySepBy element (char ',')
+    elements = manySepBy "JSON element" element (char ',')
 
 jsonObject :: Parser Json
 jsonObject = JsonObject <$>
@@ -234,17 +230,17 @@ jsonObject = JsonObject <$>
       case jsonKey of
         JsonString key -> return (key, value)
         _ -> empty
-    members = manySepBy member (char ',')
+    members = manySepBy "JSON object member" member (char ',') -- todo: change error message
 
 jsonValue :: Parser Json
-jsonValue =
-  jsonObject <|>
-  jsonArray  <|>
-  jsonNumber <|>
-  jsonString <|>
-  jsonTrue   <|>
-  jsonFalse  <|>
-  jsonNull
+jsonValue = oneOf "JSON element" [
+  jsonObject,
+  jsonArray,
+  jsonNumber,
+  jsonString,
+  jsonTrue,
+  jsonFalse,
+  jsonNull]
 
 -- Usage: parse jsonParser *input*
 jsonParser :: Parser Json
