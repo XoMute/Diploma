@@ -1,2 +1,3 @@
 - Parsing JSON to AST
 - Generating (and prettifying) JSON from AST
+- Implemented VERY FUCKING BAD error messages

@@ -4,12 +4,12 @@ module Generator
     generate
   )
 where
-import Parser (Json(JsonNull,
-                    JsonBool,
-                    JsonString,
-                    JsonNumber,
-                    JsonArray,
-                    JsonObject))
+import JsonParser (Json(JsonNull,
+                        JsonBool,
+                        JsonString,
+                        JsonNumber,
+                        JsonArray,
+                        JsonObject))
 import Data.List
 
 type Indent = Int
