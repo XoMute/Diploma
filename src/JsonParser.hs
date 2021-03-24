@@ -30,9 +30,8 @@ element :: Parser Json
 element = ws *> jsonValue <* ws
 
 jsonArray :: Parser Json
-jsonArray = JsonArray <$>
-  (between (const [] <$> ws) (char '[') (char ']')
-   <|> between elements (char '[') (char ']'))
+jsonArray = JsonArray <$> (between (const [] <$> ws) (char '[') (char ']')
+                      <|>  between elements (char '[') (char ']'))
   where
     elements = manySepBy "JSON element" element (char ',')
 
