@@ -1,8 +1,8 @@
-SRC=src/Parser.hs src/Generator.hs src/JsonParser.hs src/QueryParser.hs src/Main.hs
+SRC=src/Parser.hs src/Generator.hs src/JsonParser.hs src/QueryParser.hs src/Main.hs src/CommandLine.hs
 EXEC=bin/Main
 
-run: compile
-	./$(EXEC)
+# run: compile
+#	./$(EXEC)
 
 compile: $(SRC)
 	ghc $(SRC) -o $(EXEC) # TODO: figure out better name

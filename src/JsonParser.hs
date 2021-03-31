@@ -67,6 +67,7 @@ jsonParser = element
 
 resultToJson :: Either ParseError (Json, Input) -> Json
 resultToJson result =
-  case result of
-    Right (json, _) -> json
-    Left error -> JsonString $ show error
+  either
+    (\err -> JsonString $ show err)
+    (\(json, _) -> json)
+    result

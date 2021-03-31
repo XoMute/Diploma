@@ -5,14 +5,36 @@ import Parser
 import JsonParser
 import Generator (generate, prettyPrint)
 import QueryParser
+import CommandLine
+import System.Environment
+-- import System.IO
+-- import System.Exit
 
 main :: IO ()
 main = do
-  jsonStr <- readFile "./test.json"
-  let result = parse jsonParser (inputFrom jsonStr)
-  let json = resultToJson result
-  let generated = prettyPrint 0 json
-  putStrLn generated
+  (args, files) <- getArgs >>= parseArgs
+  -- TODO: unparsed argument should be just ONE file
+  run args (head files)
+  -- mapM_ (cat args) files
+  -- jsonStr <- readFile "./test.json"
+  -- let result = parse jsonParser (inputFrom jsonStr)
+  -- let json = resultToJson result
+  -- let generated = prettyPrint 0 json
+  -- putStrLn generated
+
+run :: [Flag] -> String -> IO ()
+run [] file = parseFile file jsonParser
+--run args file = 
+
+parseFile :: String -> Parser Json -> IO ()
+--withFile s f = putStr . unlines . f . lines =<< open s
+parseFile file parser = do
+  content <- open file
+  let result = parse parser $ inputFrom content
+  putStrLn $ prettyPrint 0 $ resultToJson result
+  where
+    open f = if f == "-" then getContents else readFile f
+--  putStr . parse parser  =<< open file
 
 testError :: IO ()
 testError = do

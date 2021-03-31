@@ -13,7 +13,7 @@ But be sure to check if this will work for all parsers and tokens: maybe some pa
 - check that pipelines work and fix them otherwise
 - structurize code so that other programmers will be able to import that to their projects
 - implement feature to split one json to separate files (and vice versa). Figure out how to decide splitting method (try to implement that with '-e')
-- add option to just validate given json (just parse it) (maybe minimify or prettify by default)
+- add option to just validate given json (just parse it) (maybe minimify or prettify by default) - should be a default behaviour
 - add rules that user can input to validate some jsons (like, some key has to be present, or value of some key should be of some exact type, or it has to have some given value, or array should be with length of N, or array is homogenous etc.
 - (MAYBE) export json to .dot file, with ability to merge objects with parameters that apply to given pattern, or set different colors for different nodes (also set by some parameter).
 ```Example:

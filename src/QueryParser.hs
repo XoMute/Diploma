@@ -74,8 +74,8 @@ object = undefined
 --   query "[.]" returns array, element of which will be current object -- PARSE THIS IN THE LAST MOMENT
 --   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
 query :: Parser [Query] -- [Query]
-query =
-  const [] <$> object <|>
+query = -- CONST IS WRONG!!! TRY :[]
+  (:[]) <$> object <|>
   const [] <$> array <|>
   fieldQuery <|>
   const [] <$>   dot <|>
