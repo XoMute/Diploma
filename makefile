@@ -1,4 +1,4 @@
-SRC=src/Parser.hs src/Generator.hs src/JsonParser.hs src/QueryParser.hs src/Main.hs src/CommandLine.hs src/Query.hs
+SRC=src/*.hs
 EXEC=bin/Main # TODO: figure out better name
 FLAGS=-O
 
