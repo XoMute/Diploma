@@ -70,6 +70,17 @@ instance Monad Parser where
       Left error -> Left error
   fail message = Parser $ \input -> Left $ ParseError (pos input) message
 
+-- check if input is left and throw an error if it is
+failIfNotFinished :: Parser a -> Parser a
+failIfNotFinished p = Parser $ \inp ->
+  let result = parse p inp in
+    case result of
+      Right (_, inp') ->
+        if null (input inp')
+        then result
+        else error $ "Could not parse input to the end: " ++ (input inp')
+      otherwise -> result
+
 -- todo: add error message
 oneOf :: String -> [Parser a] -> Parser a
 oneOf desc = foldl (<|>) err
@@ -146,7 +157,8 @@ constructDouble sign integral decimal exponent =
 
 -- TODO: do I really need to parse doubles to numbers? I can just left them as strings
 --       or maybe it will be handled in generator (it may be problematic because
---       if numbers were written in exponential form - it will be lost)
+--       if numbers were written in exponential form - it will be lost) (but i can save
+--       info about number to recreate it successfully)
 double :: Parser Double
 double = let minus = (-1) <$ char '-'
              plus = 1 <$ char '+'

@@ -5,6 +5,7 @@ import Parser
 import JsonParser
 import Generator (generate, prettyPrint)
 import QueryParser
+import Query
 import CommandLine
 import System.Environment
 -- import System.IO
@@ -27,7 +28,6 @@ run [] file = parseFile file jsonParser
 --run args file = 
 
 parseFile :: String -> Parser Json -> IO ()
---withFile s f = putStr . unlines . f . lines =<< open s
 parseFile file parser = do
   content <- open file
   let result = parse parser $ inputFrom content
@@ -58,4 +58,16 @@ testP = do
   let json = resultToJson result
   let pretty = prettyPrint 0 json
   putStrLn pretty
+
+testQuery :: String -> IO ()
+testQuery queryStr = do
+  let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
+  let result = parse jsonParser (inputFrom jsonStr)
+  let json = resultToJson result
+  let queryResult = parse queryParser (inputFrom queryStr)
+  let query = resultToQuery queryResult
+  print query
+  let res = execute query json
+  let pretty = map (prettyPrint 0) res
+  mapM_ putStrLn pretty
 

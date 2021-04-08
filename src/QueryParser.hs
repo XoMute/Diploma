@@ -17,7 +17,7 @@
 module QueryParser where
 import Parser
 import Control.Applicative
-import Data.Char (isDigit)
+import Data.Char (isDigit, isLetter)
 
 number :: Parser Int
 number = read <$> digits
@@ -26,11 +26,12 @@ number = read <$> digits
 data Query
   = Dot
   | Object [(String, Query)] -- ??
-  | Array Query
+  | Array Query -- don't use Query here
   | Pipe
   | Field String
   | Index Int
   | IndexRange (Int, Int) -- (inclusive, exclusive)
+  | EmptyArray
   | Comma
   deriving (Show, Eq)
 
@@ -38,10 +39,10 @@ dot :: Parser Query
 dot = Dot <$ char '.'
 
 pipe :: Parser Query
-pipe = Pipe <$ char '|'
+pipe = Pipe <$ (ws *> char '|' <* ws)
 
 comma :: Parser Query
-comma = Comma <$ char ','
+comma = Comma <$ (ws *> char ',' <* ws)
 
 index :: Parser Query
 index = Index <$> number
@@ -54,15 +55,19 @@ indexRange = do
   return $ IndexRange (left, right)
 
 array :: Parser Query
-array = Array <$>
+array = Array <$> (
+  between (const EmptyArray <$> ws) (char '[') (char ']') <|>
   between index (char '[') (char ']') <|>
-  between indexRange (char '[') (char ']')
+  between indexRange (char '[') (char ']'))
 
 field :: Parser Query
-field = Field <$> many character
+field = Field <$> some fieldNameCharacter
+
+fieldNameCharacter :: Parser Char
+fieldNameCharacter = parseWhen "Name of field" (\c -> isDigit c || isLetter c)
 
 object :: Parser Query
-object = undefined
+object = empty--undefined
 
 --   query ".foo" (or .["foo"]) returns value of given field of main object, if it is present, and error (exception?) otherwise
 --   query ".[<index>]" can index arrays
@@ -73,28 +78,35 @@ object = undefined
 --   query ".[] | .foo" will retrieve all foo fields from array elements.
 --   query "[.]" returns array, element of which will be current object -- PARSE THIS IN THE LAST MOMENT
 --   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
-query :: Parser [Query] -- [Query]
-query = -- CONST IS WRONG!!! TRY :[]
-  (:[]) <$> object <|>
-  const [] <$> array <|>
-  fieldQuery <|>
-  const [] <$>   dot <|>
-  const [] <$>   commaQuery <|>
-  const [] <$>   pipeQuery <|>
-  empty
 
-fieldQuery :: Parser [Query]
+query :: Parser [Query]
+query = many $ oneOf "query" [
+  -- (:[]) <$> object <|>
+  -- (:[]) <$> array <|>
+  dot,
+  comma,
+  pipe,
+  array,
+  field--,
+--  empty-- ,
+  -- const [] <$> ws
+  ]
+ -- <|>
+ --  empty -- TODO: remove?
+
+--fieldQuery :: Parser [Query]
 fieldQuery = do
-  dot
+--  dot -- maybe remove dot from here
   fld <- field
-  qr <- query
-  return $ fld : qr
+  -- qr <- query
+  -- return $ fld : qr
+  return fld
 
 commaQuery :: Parser Query
-commaQuery = undefined
+commaQuery = empty--undefined
 
 pipeQuery :: Parser Query
-pipeQuery = undefined
+pipeQuery = empty--undefined
 
 -- queryCommaExp :: Parser Query
 -- queryCommaExp = QueryCommaExp <$> manySepBy "Query comma expression" expression comma
@@ -105,5 +117,12 @@ pipeQuery = undefined
 -- queryExp :: Parser Query
 -- queryExp = queryCommaExp <|> queryPipeExp
 
-queryParser :: Parser Query
-queryParser = undefined
+queryParser :: Parser [Query]
+queryParser = failIfNotFinished query -- todo: if empty array or input is left - parse error
+
+resultToQuery :: Either ParseError ([Query], Input) -> [Query]
+resultToQuery result =
+  either
+    (\err -> error $ "AAA " ++ show err)
+    (\(query, _) -> query)
+    result
