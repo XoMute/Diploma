@@ -39,7 +39,7 @@ dot :: Parser Query
 dot = Dot <$ char '.'
 
 pipe :: Parser Query
-pipe = Pipe <$ (ws *> char '|' <* ws)
+pipe = Pipe <$ (ws1 *> char '|' <* ws1)
 
 comma :: Parser Query
 comma = Comma <$ (ws *> char ',' <* ws)
@@ -50,8 +50,8 @@ index = Index <$> number
 indexRange :: Parser Query
 indexRange = do
   left <- number
-  char ':'
-  right <- number
+  char ':' -- TODO: error if not found
+  right <- number -- TODO: fail if nothing? Or even error
   return $ IndexRange (left, right)
 
 array :: Parser Query
@@ -69,12 +69,12 @@ fieldNameCharacter = parseWhen "Name of field" (\c -> isDigit c || isLetter c)
 object :: Parser Query
 object = empty--undefined
 
---   query ".foo" (or .["foo"]) returns value of given field of main object, if it is present, and error (exception?) otherwise
---   query ".[<index>]" can index arrays
---   query ".[<index1>:<index2>]" will return array slice (exclusive for index2)
---   query ".[]" returns all elements of toplevel array as separate lines
---   query ".foo[]" returns all elements of foo array as separate lines
---   query ".foo, .bar" will separate two different outputs for foo and bar values
+--   query ".foo" returns value of given field of main object, if it is present, and error (exception?) otherwise -- DONE
+--   query ".[<index>]" can index arrays -- DONE
+--   query ".[<index1>:<index2>]" will return array slice (exclusive for index2) -- DONE
+--   query ".[]" returns all elements of toplevel array as separate lines -- DONE
+--   query ".foo[]" returns all elements of foo array as separate lines -- DONE
+--   query ".foo, .bar" will separate two different outputs for foo and bar values -- DONE
 --   query ".[] | .foo" will retrieve all foo fields from array elements.
 --   query "[.]" returns array, element of which will be current object -- PARSE THIS IN THE LAST MOMENT
 --   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
@@ -88,19 +88,7 @@ query = many $ oneOf "query" [
   pipe,
   array,
   field--,
---  empty-- ,
-  -- const [] <$> ws
   ]
- -- <|>
- --  empty -- TODO: remove?
-
---fieldQuery :: Parser [Query]
-fieldQuery = do
---  dot -- maybe remove dot from here
-  fld <- field
-  -- qr <- query
-  -- return $ fld : qr
-  return fld
 
 commaQuery :: Parser Query
 commaQuery = empty--undefined

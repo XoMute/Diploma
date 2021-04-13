@@ -61,13 +61,27 @@ testP = do
 
 testQuery :: String -> IO ()
 testQuery queryStr = do
+  -- let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
   let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
   let result = parse jsonParser (inputFrom jsonStr)
   let json = resultToJson result
   let queryResult = parse queryParser (inputFrom queryStr)
   let query = resultToQuery queryResult
-  print query
+  -- print query
   let res = execute query json
   let pretty = map (prettyPrint 0) res
   mapM_ putStrLn pretty
 
+
+testQueryForMisha :: String -> IO ()
+testQueryForMisha queryStr = do
+  -- let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
+  let jsonStr = "[{\"foo\": {\"bar\": {\"buz\": 1}}}, {\"foo\": {\"bar\": {\"buz\": 2}}}, {\"foo\": {\"bar\": {\"buz\": 3}}}]"
+  let result = parse jsonParser (inputFrom jsonStr)
+  let json = resultToJson result
+  let queryResult = parse queryParser (inputFrom queryStr)
+  let query = resultToQuery queryResult
+  -- print query
+  let res = execute query json
+  let pretty = map (prettyPrint 0) res
+  mapM_ putStrLn pretty

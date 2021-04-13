@@ -118,8 +118,14 @@ char c = Parser f
           else Left $
                ParseError (pos input) (errorMessage (quote c) (quote x))
 
+whitespace :: Parser Char
+whitespace = oneOf "whitespace character"[char '\n', char '\r', char '\t', char ' ']
+
 ws :: Parser String
-ws = many $ oneOf "whitespace character"[char '\n', char '\r', char '\t', char ' ']
+ws = many whitespace
+
+ws1 :: Parser String
+ws1 = some whitespace
 
 character :: Parser Char
 character =
