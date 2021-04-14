@@ -10,6 +10,7 @@
 --   query ".foo[]" returns all elements of foo array as separate lines
 --   query ".foo, .bar" will separate two different outputs for foo and bar values
 --   query ".[] | .foo" will retrieve all foo fields from array elements.
+--   query ".[] | .foo == 1" will retrieve all elements from array in which foo fields equal to 1.
 --   query "[.]" returns array, element of which will be current object
 --   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
 --   Also: Conditionals on which to choose given fields? -- No, should do that as separate parameter
@@ -23,6 +24,15 @@ number :: Parser Int
 number = read <$> digits
   where digits = some $ parseWhen "Digit" isDigit
 
+data Comparison
+  = LT
+  | LE
+  | GT
+  | GE
+  | EQ
+  | NEQ
+  deriving (Show, Eq)
+
 data Query
   = Dot
   | Object [(String, Query)] -- ??
@@ -31,8 +41,11 @@ data Query
   | Field String
   | Index Int
   | IndexRange (Int, Int) -- (inclusive, exclusive)
+  | QueryNumber Double
   | EmptyArray
   | Comma
+  | Compare Comparison
+  | QueryString String
   deriving (Show, Eq)
 
 dot :: Parser Query
@@ -61,49 +74,48 @@ array = Array <$> (
   between indexRange (char '[') (char ']'))
 
 field :: Parser Query
-field = Field <$> some fieldNameCharacter
+field = Field <$> do
+  c1   <- parseWhen "" isLetter
+  rest <- some fieldNameCharacter
+  return (c1:rest)
+
+queryNumber :: Parser Query
+queryNumber = QueryNumber <$> (ws *> double)
+
+queryString :: Parser Query
+queryString = QueryString <$> between (many character) (char '"') (char '"')
+
+comparison :: Parser Query
+comparison = Compare <$> (ws *> (le <|> ge <|> lt <|> gt <|> eq <|> neq) <* ws)
+  where lt  = const QueryParser.LT  <$> string "<"
+        le  = const QueryParser.LE  <$> string "<="
+        gt  = const QueryParser.GT  <$> string ">"
+        ge  = const QueryParser.GE  <$> string ">="
+        eq  = const QueryParser.EQ  <$> string "=="
+        neq = const QueryParser.NEQ <$> string "!="
 
 fieldNameCharacter :: Parser Char
 fieldNameCharacter = parseWhen "Name of field" (\c -> isDigit c || isLetter c)
 
 object :: Parser Query
-object = empty--undefined
+object = empty
 
---   query ".foo" returns value of given field of main object, if it is present, and error (exception?) otherwise -- DONE
---   query ".[<index>]" can index arrays -- DONE
---   query ".[<index1>:<index2>]" will return array slice (exclusive for index2) -- DONE
---   query ".[]" returns all elements of toplevel array as separate lines -- DONE
---   query ".foo[]" returns all elements of foo array as separate lines -- DONE
---   query ".foo, .bar" will separate two different outputs for foo and bar values -- DONE
---   query ".[] | .foo" will retrieve all foo fields from array elements.
+--   query ".[] | .foo == 1" will retrieve all elements from array in which foo fields equal to 1.
 --   query "[.]" returns array, element of which will be current object -- PARSE THIS IN THE LAST MOMENT
 --   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
 
 query :: Parser [Query]
 query = many $ oneOf "query" [
-  -- (:[]) <$> object <|>
-  -- (:[]) <$> array <|>
+  array,
+  object,
   dot,
   comma,
   pipe,
-  array,
-  field--,
+  field,
+  queryNumber,
+  queryString,
+  comparison
   ]
-
-commaQuery :: Parser Query
-commaQuery = empty--undefined
-
-pipeQuery :: Parser Query
-pipeQuery = empty--undefined
-
--- queryCommaExp :: Parser Query
--- queryCommaExp = QueryCommaExp <$> manySepBy "Query comma expression" expression comma
-
--- queryPipeExp :: Parser Query
--- queryPipeExp = QueryPipeExp <$> manySepBy "Query pipe expression" expression pipe
-
--- queryExp :: Parser Query
--- queryExp = queryCommaExp <|> queryPipeExp
 
 queryParser :: Parser [Query]
 queryParser = failIfNotFinished query -- todo: if empty array or input is left - parse error
@@ -111,6 +123,6 @@ queryParser = failIfNotFinished query -- todo: if empty array or input is left -
 resultToQuery :: Either ParseError ([Query], Input) -> [Query]
 resultToQuery result =
   either
-    (\err -> error $ "AAA " ++ show err)
+    (\err -> error $ "AAA " ++ show err) -- TODO: rewrite
     (\(query, _) -> query)
     result

@@ -1,6 +1,5 @@
 module Main where
 
--- import Parser (Parser, parse, jsonParser) -- TODO: uncomment
 import Parser
 import JsonParser
 import Generator (generate, prettyPrint)
@@ -9,32 +8,39 @@ import Query
 import CommandLine
 import System.Environment
 -- import System.IO
--- import System.Exit
 
 main :: IO ()
 main = do
   (args, files) <- getArgs >>= parseArgs
   -- TODO: unparsed argument should be just ONE file
-  run args (head files)
-  -- mapM_ (cat args) files
-  -- jsonStr <- readFile "./test.json"
-  -- let result = parse jsonParser (inputFrom jsonStr)
-  -- let json = resultToJson result
-  -- let generated = prettyPrint 0 json
-  -- putStrLn generated
+  res <- run args (head files)
+  let pretty = map (prettyPrint 0) res
+  mapM_ putStrLn pretty
 
-run :: [Flag] -> String -> IO ()
-run [] file = parseFile file jsonParser
---run args file = 
+run :: [Flag] -> String -> IO ([Json])
+run [] file = (:[]) <$> parseFile file jsonParser
+run ((Filter query):args) file = do
+  json <- parseFile file jsonParser
+  let queryResult = parse queryParser (inputFrom query)
+  let query = resultToQuery queryResult
+  let res = filterJson query json
+  return res
+run ((Duplicates query):args) file = do -- TODO
+  json <- parseFile file jsonParser
+  let queryResult = parse queryParser (inputFrom query)
+  let query = resultToQuery queryResult
+  let res = filterJson query json
+  return res
 
-parseFile :: String -> Parser Json -> IO ()
+run args _ = error $ "Not implemented yet: " ++ show args
+
+parseFile :: String -> Parser Json -> IO (Json)
 parseFile file parser = do
   content <- open file
   let result = parse parser $ inputFrom content
-  putStrLn $ prettyPrint 0 $ resultToJson result
+  return $ resultToJson result
   where
     open f = if f == "-" then getContents else readFile f
---  putStr . parse parser  =<< open file
 
 testError :: IO ()
 testError = do
@@ -61,27 +67,22 @@ testP = do
 
 testQuery :: String -> IO ()
 testQuery queryStr = do
-  -- let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
   let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
   let result = parse jsonParser (inputFrom jsonStr)
   let json = resultToJson result
   let queryResult = parse queryParser (inputFrom queryStr)
   let query = resultToQuery queryResult
-  -- print query
-  let res = execute query json
+  let res = filterJson query json
   let pretty = map (prettyPrint 0) res
   mapM_ putStrLn pretty
 
-
-testQueryForMisha :: String -> IO ()
-testQueryForMisha queryStr = do
-  -- let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
+testQuery1 :: String -> IO ()
+testQuery1 queryStr = do
   let jsonStr = "[{\"foo\": {\"bar\": {\"buz\": 1}}}, {\"foo\": {\"bar\": {\"buz\": 2}}}, {\"foo\": {\"bar\": {\"buz\": 3}}}]"
   let result = parse jsonParser (inputFrom jsonStr)
   let json = resultToJson result
   let queryResult = parse queryParser (inputFrom queryStr)
   let query = resultToQuery queryResult
-  -- print query
-  let res = execute query json
+  let res = filterJson query json
   let pretty = map (prettyPrint 0) res
   mapM_ putStrLn pretty

@@ -161,10 +161,7 @@ constructDouble :: Integer -> Integer -> Double -> Integer -> Double
 constructDouble sign integral decimal exponent =
   fromIntegral sign * (fromIntegral integral + decimal) * (10 ^^ exponent)
 
--- TODO: do I really need to parse doubles to numbers? I can just left them as strings
---       or maybe it will be handled in generator (it may be problematic because
---       if numbers were written in exponential form - it will be lost) (but i can save
---       info about number to recreate it successfully)
+-- TODO: save info about number to recreate it successfully
 double :: Parser Double
 double = let minus = (-1) <$ char '-'
              plus = 1 <$ char '+'

@@ -7,7 +7,7 @@ But be sure to check if this will work for all parsers and tokens: maybe some pa
 ```
 - implement expression parsing just like in jq (https://stedolan.github.io/jq/)
 -- implement semantic check for successfully parsed queries
--- NOTE: Expression parsing should be very limited (not so enormous like in jq), and should be inputted after some parameter (like '-e') was passed to main program. All following features should be done with separate parameters (it will be much more easier)
+-- NOTE: Expression parsing should be very limited (not so enormous like in jq), and should be inputted after some parameter (like '-e') was passed to main program. All following features should be done with separate parameters (it will be much more easier?)
 - expression or cli option to delete some values from objects (instead of reconstructing them without this value via '-e') (?)
 - structurize code so that other programmers will be able to import that to their projects
 - implement feature to split one json to separate files (and vice versa). Figure out how to decide splitting method (try to implement that with '-e')

@@ -10,19 +10,23 @@ import System.IO
 import Text.Printf
 
 data Flag
-  = Expression String  -- -e
-  | Remove       -- -r
-  | Split        -- -s
-  | Merge        -- -m
-  | Duplucates   -- -d
-  | Validate     -- -n
-  | Help         -- --help
+  = Filter String  -- -f
+  | Remove         -- -r
+  | Split          -- -s
+  | Merge          -- -m
+  | Duplicates String -- -d
+  | Validate       -- -v
+  | Help           -- --help
   deriving (Show, Eq, Ord)
 
 flags =
-  [Option ['e'] ["expr"] (ReqArg Expression "EXPR")
+  [Option  ['f']  ["filter"]  (ReqArg Filter "EXPR")
     "Filter json by given expression."
-  -- ,Option ['e'] [] (NoArg Dollar)
+   ,Option ['d'] ["dupl"]     (ReqArg Duplicates "EXPR")
+    "Filter json by given expression and remove all duplicates."
+   ,Option ['v'] ["validate"] (NoArg Validate)
+    "Validate json by given expression."
+    -- ,Option ['e'] [] (NoArg Dollar)
   --   "Implies the -v option and also prints a dollar sign at the end of each line."
   -- ,Option ['s'] [] (NoArg Squeeze)
   --   "Squeeze multiple adjacent empty lines, causing the output to be single-spaced."
@@ -60,7 +64,7 @@ parseArgs argv = case getOpt Permute flags argv of
         -- set Tabs   = [Tabs, Invisible]
         set f      = [f] -- todo: remove it completely?
 
--- numberLine = printf "%6d  %s"
+  -- numberLine = printf "%6d  %s"
 -- numberAll s = zipWith numberLine [(1 :: Integer)..] s
 -- numberSome s = reverse . snd $ foldl' draw (1, []) s
 --   where
