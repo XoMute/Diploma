@@ -142,3 +142,35 @@
   "buz": 3.0
 }
 ```
+### Query:
+`".[] | .foo.bar.buz > 1"`
+### Result:
+```javascript
+{
+  "foo": {
+    "bar": {
+      "buz": 2.0
+    }
+  }
+}
+{
+  "foo": {
+    "bar": {
+      "buz": 3.0
+    }
+  }
+}
+```
+### Query:
+`".[] | .foo.bar.buz > 1.0e0 | .foo.bar.buz, .foo.bar"`
+### Result:
+```javascript
+2.0
+{
+  "buz": 2.0
+}
+3.0
+{
+  "buz": 3.0
+}
+```
