@@ -7,6 +7,5 @@
 * Dot HAS to be present between different parts (`.[0]foo` is incorrect but possible atm.)
 * Field name must be preceeded with dot
 * TODO
-- Array creation of elements
-- Object creation of given fields
-
+- add semicolon to split expressions
+- add assignment

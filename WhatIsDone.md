@@ -6,4 +6,3 @@
 - Partially implemented comma and pipe in queries
 - Added filter argument
 - Added comparisons in filter
-

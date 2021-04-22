@@ -32,8 +32,7 @@ nextChar (Input (posX, posY) (x:xs))
   | x == '\n' = Just (x, Input (1, posY + 1) xs)
   | otherwise = Just (x, Input (posX + 1, posY) xs)
 
-data ParseError = ParseError Position String
-  deriving (Show)
+data ParseError = ParseError Position String deriving (Show)
 
 newtype Parser a = Parser { parse :: Input -> Either ParseError (a, Input) }
 
@@ -52,6 +51,7 @@ instance Applicative Parser where
       (v, rest') <- p rest
       pure (f v, rest')
 
+-- todo: do I need this code?
 instance Alternative (Either ParseError) where
   empty = Left $ ParseError (0, 0) ""
   Left _ <|> r = r
@@ -81,24 +81,17 @@ failIfNotFinished p = Parser $ \inp ->
         else error $ "Could not parse input to the end: " ++ (input inp')
       otherwise -> result
 
--- todo: add error message
-oneOf :: String -> [Parser a] -> Parser a
-oneOf desc = foldl (<|>) err
-  where err = fail $ "Couldn't parse " ++ desc
+oneOf :: [Parser a] -> Parser a
+oneOf = foldl (<|>) empty
 
--- todo: add error message
-manySepBy :: String -> Parser a -> Parser b -> Parser [a]
-manySepBy desc p delim = manySepBy1 p delim <|> err
-  where err = fail $ "Couldn't parse " ++ desc
+manySepBy :: Parser a -> Parser b -> Parser [a]
+manySepBy p delim = manySepBy1 p delim <|> empty
 
 manySepBy1 :: Parser a -> Parser b -> Parser [a]
 manySepBy1 p delim = do
   v  <- p -- first element parsed
   vs <- many $ do {delim; p} -- parse many (0 or more) of delimiter, followed by element
   return (v:vs)
-
-errorMessage :: String -> String -> String
-errorMessage expected found = expected ++ " expected, but " ++ found ++ " found"
 
 quote :: Char -> String
 quote c = ['\'', c, '\'']
@@ -112,14 +105,14 @@ char c = Parser f
     f input =
       case nextChar input of
         Nothing -> Left $
-          ParseError (pos input) (errorMessage (quote c) "EOF")
+          ParseError (pos input) "EOF"
         Just (x, input') ->
           if c == x then Right (c, input')
           else Left $
-               ParseError (pos input) (errorMessage (quote c) (quote x))
+               ParseError (pos input) ((quote c) ++ " expected, but found " ++ (quote x))
 
 whitespace :: Parser Char
-whitespace = oneOf "whitespace character"[char '\n', char '\r', char '\t', char ' ']
+whitespace = oneOf [char '\n', char '\r', char '\t', char ' ']
 
 ws :: Parser String
 ws = many whitespace
@@ -130,12 +123,11 @@ ws1 = some whitespace
 character :: Parser Char
 character =
   parseWhen
-    "Non-special character"
     (\c -> c /= '"' && c /= '\\') <|>
   escape
 
 escape :: Parser Char
-escape = oneOf "escape character" [
+escape = oneOf [
   ('"'  <$ string "\\\""),
   ('\\' <$ string "\\\\"),
   ('/'  <$ string "\\/"),
@@ -165,10 +157,10 @@ constructDouble sign integral decimal exponent =
 double :: Parser Double
 double = let minus = (-1) <$ char '-'
              plus = 1 <$ char '+'
-             digits = some $ parseWhen "Digit" isDigit
+             digits = some $ parseWhen isDigit
              e = char 'e' <|> char 'E'
          in do
-             sign <- minus <|> pure 1 -- pure will return given value without reading it from input
+             sign <- minus <|> pure 1
              integral <- read <$> digits
              -- append "0." to digits and read result as double
              decimal <- read <$> (("0." ++) <$> (char '.' *> digits)) <|> pure 0
@@ -184,13 +176,13 @@ between p left right = do
   return res
 
 -- parses character only if it matches predicate
-parseWhen :: String -> (Char -> Bool) -> Parser Char
-parseWhen description pred = Parser $ \input ->
+parseWhen :: (Char -> Bool) -> Parser Char
+parseWhen pred = Parser $ \input ->
   case nextChar input of
     Nothing -> Left $
-      ParseError (pos input) (errorMessage description "EOF")
+      ParseError (pos input) "EOF"
     Just (x, input') ->
       if pred x then Right (x, input')
       else Left $
-           ParseError (pos input) (errorMessage description (quote x))
+           ParseError (pos input) (quote x)
 

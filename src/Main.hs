@@ -7,32 +7,57 @@ import QueryParser
 import Query
 import CommandLine
 import System.Environment
+import Data.List
+import Data.Maybe
+import Control.Monad
+import Control.Applicative
 -- import System.IO
 
 main :: IO ()
 main = do
   (args, files) <- getArgs >>= parseArgs
   -- TODO: unparsed argument should be just ONE file
-  res <- run args (head files)
-  let pretty = map (prettyPrint 0) res
-  mapM_ putStrLn pretty
+  js <- run (reverse args) (head files)
+  let res   = if Duplicates `elem` args
+              then map removeDuplicates js
+              else js
+  let jsons = if Minimize `elem` args
+              then map generate res
+              else map (prettyPrint 0) res
+  mapM_ putStrLn jsons
 
 run :: [Flag] -> String -> IO ([Json])
 run [] file = (:[]) <$> parseFile file jsonParser
-run ((Filter query):args) file = do
-  json <- parseFile file jsonParser
-  let queryResult = parse queryParser (inputFrom query)
-  let query = resultToQuery queryResult
-  let res = filterJson query json
-  return res
-run ((Duplicates query):args) file = do -- TODO
-  json <- parseFile file jsonParser
-  let queryResult = parse queryParser (inputFrom query)
-  let query = resultToQuery queryResult
-  let res = filterJson query json
-  return res
 
-run args _ = error $ "Not implemented yet: " ++ show args
+run args file = do
+  when (hasFilter && hasSearch) $
+    error "Please, specify either '-f' or '-s' options."
+  when (hasParent && not hasSearch) $
+    error "Please, specify '-s' option along with '-p'."
+  json <- parseFile file jsonParser
+  filtered <- if hasFilter then
+    do
+      let query = resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
+      let res = filterJson query json
+      return res
+    else pure $ filterJson [] json
+  searched <- if hasSearch then
+    do
+      let query = resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
+      let res = searchJson query getParentLevel json
+      return res
+    else pure filtered
+  return searched
+  where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')
+        hasSearch = optionIsPresent (Search "") args
+        hasParent = optionIsPresent (Parent 0) args
+
+        getFilterQuery = let (Filter query) = fromJust $ find isFilter args
+                         in query
+        getSearchQuery = let (Search query) = fromJust $ find isSearch args
+                         in query
+        getParentLevel = let (Parent level) = fromMaybe (Parent 0) $ find isParent args
+                         in level
 
 parseFile :: String -> Parser Json -> IO (Json)
 parseFile file parser = do
@@ -42,47 +67,3 @@ parseFile file parser = do
   where
     open f = if f == "-" then getContents else readFile f
 
-testError :: IO ()
-testError = do
-  let jsonStr = "{\"name1\": 2.3e5, \"name2\":}"
-  let result = parse jsonParser (inputFrom jsonStr)
-  -- why the fuck is it so hard to understand how to show correct errors
-  print result
-
-test :: IO ()
-test = do
-  let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": 0}]}}"
-  let result = parse jsonParser (inputFrom jsonStr)
-  let json = resultToJson result
-  let generated = generate json
-  putStrLn generated
-
-testP :: IO ()
-testP = do
-  let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
-  let result = parse jsonParser (inputFrom jsonStr)
-  let json = resultToJson result
-  let pretty = prettyPrint 0 json
-  putStrLn pretty
-
-testQuery :: String -> IO ()
-testQuery queryStr = do
-  let jsonStr = "{\"name1\": true, \"name2\": [1, 2, 3], \"name3\": {\"name4\": [null, \"Some timestamp\", {\"name5\": \"Value\"}]}}"
-  let result = parse jsonParser (inputFrom jsonStr)
-  let json = resultToJson result
-  let queryResult = parse queryParser (inputFrom queryStr)
-  let query = resultToQuery queryResult
-  let res = filterJson query json
-  let pretty = map (prettyPrint 0) res
-  mapM_ putStrLn pretty
-
-testQuery1 :: String -> IO ()
-testQuery1 queryStr = do
-  let jsonStr = "[{\"foo\": {\"bar\": {\"buz\": 1}}}, {\"foo\": {\"bar\": {\"buz\": 2}}}, {\"foo\": {\"bar\": {\"buz\": 3}}}]"
-  let result = parse jsonParser (inputFrom jsonStr)
-  let json = resultToJson result
-  let queryResult = parse queryParser (inputFrom queryStr)
-  let query = resultToQuery queryResult
-  let res = filterJson query json
-  let pretty = map (prettyPrint 0) res
-  mapM_ putStrLn pretty

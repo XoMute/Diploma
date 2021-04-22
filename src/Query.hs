@@ -4,8 +4,10 @@ import JsonParser
 import Data.List.Split
 import Data.List
 
+--------------------- FILTERING -----------------------
+
 filterJson :: [Query] -> Json -> [Json]
-filterJson qs json = filterWithPipes qs json
+filterJson qs json = filterWithPipes (semanticCheckForFilter qs) json
   where filterWithPipes qs json =
           let pipedQueries = splitOn [Pipe] qs
           in foldl' (\json qs -> concatMap (filterSeparated qs) json) [json] pipedQueries
@@ -13,6 +15,13 @@ filterJson qs json = filterWithPipes qs json
         filterSeparated qs json =
             let separateQs = splitOn [Comma] qs
             in concatMap (flip filterWithOriginal json) separateQs
+
+semanticCheckForFilter :: [Query] -> [Query]
+semanticCheckForFilter qs =
+  -- TODO: figure out how to add rules that will forbid given elements together
+  if length qs > 0
+  then qs
+  else error "Can't !!!"
 
 filterWithOriginal :: [Query] -> Json -> [Json] -- TODO: better name
 filterWithOriginal queries original = filter' queries original
@@ -48,7 +57,7 @@ filterOneQuery (Array (IndexRange range@(l, r))) (JsonArray xs) =
 filterOneQuery Comma json = [json]
 
 filterOneQuery wtf json = error $ "Can't execute query " ++ show wtf ++ " " ++ show json -- todo: implement query generator?
-
+-- TODO: add booleans
 filterCompare :: Query -> Query -> Json -> Bool
 filterCompare (Compare (QueryParser.EQ)) (QueryNumber x) (JsonNumber y) = x == y
 filterCompare (Compare (QueryParser.EQ)) (QueryString x) (JsonString y) = x == y
@@ -79,3 +88,13 @@ getField name json =
 
 slice :: Int -> Int -> [a] -> [a]
 slice l r = take (r - l) . drop l
+
+--------------------- DUPLICATES -----------------------
+
+-- TODO: implement for array and object
+removeDuplicates :: Json -> Json
+removeDuplicates json = undefined
+
+  --------------------- SEARCHING -----------------------
+searchJson :: [Query] -> Int -> Json -> [Json]
+searchJson = undefined

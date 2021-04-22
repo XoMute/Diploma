@@ -1,46 +1,60 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module CommandLine where
 
 import Control.Monad
 import Data.Char
 import Data.List
+import Data.Data
+import Data.Function
+import Data.Maybe
 import System.Console.GetOpt
 import System.Environment
 import System.Exit
 import System.IO
 import Text.Printf
+import Text.Read
 
 data Flag
-  = Filter String  -- -f
-  | Remove         -- -r
-  | Split          -- -s
-  | Merge          -- -m
-  | Duplicates String -- -d
-  | Validate       -- -v
-  | Help           -- --help
-  deriving (Show, Eq, Ord)
+  = Filter String      -- -f
+  | Duplicates         -- -d
+  | Search String      -- -s
+  | Parent Int         -- -p
+  | Minimize           -- -m
+  | Help               -- --help
+  deriving (Show, Eq, Ord, Typeable, Data)
+
+optionIsPresent :: Flag -> [Flag] -> Bool
+optionIsPresent f = isJust . find ((==) $ toConstr f) . map toConstr
+
+isFilter :: Flag -> Bool
+isFilter (Filter _) = True
+isFilter f = False
+
+isSearch :: Flag -> Bool
+isSearch (Search _) = True
+isSearch f = False
+
+isParent :: Flag -> Bool
+isParent (Parent _) = True
+isParent f = False
 
 flags =
-  [Option  ['f']  ["filter"]  (ReqArg Filter "EXPR")
+  [Option  ['f'] ["filter"]   (ReqArg Filter "EXPR")
     "Filter json by given expression."
-   ,Option ['d'] ["dupl"]     (ReqArg Duplicates "EXPR")
-    "Filter json by given expression and remove all duplicates."
-   ,Option ['v'] ["validate"] (NoArg Validate)
-    "Validate json by given expression."
-    -- ,Option ['e'] [] (NoArg Dollar)
-  --   "Implies the -v option and also prints a dollar sign at the end of each line."
-  -- ,Option ['s'] [] (NoArg Squeeze)
-  --   "Squeeze multiple adjacent empty lines, causing the output to be single-spaced."
-  -- ,Option ['t'] [] (NoArg Tabs)
-  --   "Implies the -v option and also prints tab characters as `^I'."
-  -- ,Option ['u'] [] (NoArg Unbuffered)
-  --   "The output is guaranteed to be unbuffered (see setbuf(3))."
-  -- ,Option ['v'] [] (NoArg Invisible)
-  --   "Displays non-printing characters so they are visible."
-  -- ,Option ['n'] [] (NoArg Number)
-  --   "Number the output lines, starting at 1."
-  ,Option ['h'] ["help"] (NoArg Help)
-    "Display this help and exit."
+   ,Option ['d'] ["dupl"]     (NoArg Duplicates)
+    "Remove all duplicates from output after filtering."
+   ,Option ['s'] ["search"]   (ReqArg Search "EXPR")
+    "Find object with given field and value."
+   ,Option ['p'] ["parent"]   (ReqArg (Parent . read) "NUM")
+    "Works along with '-s' flag. Get parent of found object at given level, where level 0 is the object itself."
+   ,Option ['m'] ["minimize"] (NoArg Minimize)
+    "Minimize json output."
+   ,Option ['h'] ["help"] (NoArg Help)
+     "Display this help and exit."
   ]
+
+readInt :: Maybe String -> Maybe Int
+readInt m = m >>= readMaybe
 
 -- returns all parsed flags and unparsed arguments
 parseArgs :: [String] -> IO ([Flag], [String])

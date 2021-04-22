@@ -33,7 +33,7 @@ jsonArray :: Parser Json
 jsonArray = JsonArray <$> (between (const [] <$> ws) (char '[') (char ']')
                       <|>  between elements (char '[') (char ']'))
   where
-    elements = manySepBy "JSON element" element (char ',')
+    elements = manySepBy element (char ',')
 
 jsonObject :: Parser Json
 jsonObject = JsonObject <$>
@@ -49,10 +49,10 @@ jsonObject = JsonObject <$>
       case jsonKey of
         JsonString key -> return (key, value)
         _ -> empty
-    members = manySepBy "JSON object member" member (char ',') -- todo: change error message
+    members = manySepBy member (char ',')
 
 jsonValue :: Parser Json
-jsonValue = oneOf "JSON element" [
+jsonValue = oneOf [
   jsonObject,
   jsonArray,
   jsonNumber,

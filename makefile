@@ -1,6 +1,6 @@
 SRC=src/*.hs
 EXEC=bin/Main # TODO: figure out better name
-FLAGS=-O
+FLAGS=-O2
 
 # run: compile
 #	./$(EXEC)

@@ -1,6 +1,5 @@
--- ASK: is it ok to copy expression types from jq
 -- Reference: https://stedolan.github.io/jq/manual
--- This module contains functions to parse given query and to execute it on the json.
+-- This module contains functions to parse given query.
 -- For example:
 --   query "." returns toplevel object as itself
 --   query ".foo" returns value of given field of main object, if it is present, and error (exception?) otherwise
@@ -22,7 +21,7 @@ import Data.Char (isDigit, isLetter)
 
 number :: Parser Int
 number = read <$> digits
-  where digits = some $ parseWhen "Digit" isDigit
+  where digits = some $ parseWhen isDigit
 
 data Comparison
   = LT
@@ -33,16 +32,18 @@ data Comparison
   | NEQ
   deriving (Show, Eq)
 
-data Query
-  = Dot
-  | Object [(String, Query)] -- ??
-  | Array Query -- don't use Query here
-  | Pipe
-  | Field String
+data ArrayIndex
+  = EmptyArray
   | Index Int
   | IndexRange (Int, Int) -- (inclusive, exclusive)
+  deriving (Show, Eq)
+
+data Query
+  = Dot
+  | Array ArrayIndex
+  | Pipe
+  | Field String
   | QueryNumber Double
-  | EmptyArray
   | Comma
   | Compare Comparison
   | QueryString String
@@ -57,10 +58,10 @@ pipe = Pipe <$ (ws1 *> char '|' <* ws1)
 comma :: Parser Query
 comma = Comma <$ (ws *> char ',' <* ws)
 
-index :: Parser Query
+index :: Parser ArrayIndex
 index = Index <$> number
 
-indexRange :: Parser Query
+indexRange :: Parser ArrayIndex
 indexRange = do
   left <- number
   char ':' -- TODO: error if not found
@@ -73,11 +74,12 @@ array = Array <$> (
   between index (char '[') (char ']') <|>
   between indexRange (char '[') (char ']'))
 
+-- TODO: https://jsonapi.org/format/#document-member-names
 field :: Parser Query
-field = Field <$> do
-  c1   <- parseWhen "" isLetter
-  rest <- some fieldNameCharacter
-  return (c1:rest)
+field = Field <$> some character -- do
+  -- c1   <- parseWhen isLetter
+  -- rest <- many $ parseWhen (\c -> isDigit c || isLetter c)
+  --  return (c1:rest)
 
 queryNumber :: Parser Query
 queryNumber = QueryNumber <$> (ws *> double)
@@ -94,20 +96,9 @@ comparison = Compare <$> (ws *> (le <|> ge <|> lt <|> gt <|> eq <|> neq) <* ws)
         eq  = const QueryParser.EQ  <$> string "=="
         neq = const QueryParser.NEQ <$> string "!="
 
-fieldNameCharacter :: Parser Char
-fieldNameCharacter = parseWhen "Name of field" (\c -> isDigit c || isLetter c)
-
-object :: Parser Query
-object = empty
-
---   query ".[] | .foo == 1" will retrieve all elements from array in which foo fields equal to 1.
---   query "[.]" returns array, element of which will be current object -- PARSE THIS IN THE LAST MOMENT
---   query "{field1: .foo}" will generate json "{\"field1\": *some-value-foo*}"
-
 query :: Parser [Query]
-query = many $ oneOf "query" [
+query = many $ oneOf [
   array,
-  object,
   dot,
   comma,
   pipe,
@@ -118,7 +109,7 @@ query = many $ oneOf "query" [
   ]
 
 queryParser :: Parser [Query]
-queryParser = failIfNotFinished query -- todo: if empty array or input is left - parse error
+queryParser = failIfNotFinished query
 
 resultToQuery :: Either ParseError ([Query], Input) -> [Query]
 resultToQuery result =
