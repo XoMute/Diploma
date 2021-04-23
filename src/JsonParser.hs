@@ -15,10 +15,10 @@ jsonNull :: Parser Json
 jsonNull = JsonNull <$ string "null"
 
 jsonTrue :: Parser Json
-jsonTrue = (JsonBool True) <$ string "true"
+jsonTrue = JsonBool True <$ string "true"
 
 jsonFalse :: Parser Json
-jsonFalse = (JsonBool False) <$ string "false"
+jsonFalse = JsonBool False <$ string "false"
 
 jsonString :: Parser Json
 jsonString = JsonString <$> between (many character) (char '"') (char '"')

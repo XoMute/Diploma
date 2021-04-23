@@ -4,14 +4,15 @@ import Parser
 import JsonParser
 import Generator (generate, prettyPrint)
 import QueryParser
-import Query
+import Filtration
 import CommandLine
-import System.Environment
+
 import Data.List
 import Data.Maybe
 import Control.Monad
 import Control.Applicative
--- import System.IO
+import System.Environment
+import System.Exit
 
 main :: IO ()
 main = do
@@ -26,26 +27,24 @@ main = do
               else map (prettyPrint 0) res
   mapM_ putStrLn jsons
 
-run :: [Flag] -> String -> IO ([Json])
+run :: [Flag] -> String -> IO [Json]
 run [] file = (:[]) <$> parseFile file jsonParser
 
 run args file = do
   when (hasFilter && hasSearch) $
-    error "Please, specify either '-f' or '-s' options."
+    die "Please, specify either '-f' or '-s' options."
   when (hasParent && not hasSearch) $
-    error "Please, specify '-s' option along with '-p'."
+    die "Please, specify '-s' option along with '-p'."
   json <- parseFile file jsonParser
   filtered <- if hasFilter then
     do
       let query = resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
-      let res = filterJson query json
-      return res
-    else pure $ filterJson [] json
+      filterJson query json
+    else filterJson [] json
   searched <- if hasSearch then
     do
       let query = resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
-      let res = searchJson query getParentLevel json
-      return res
+      searchJson query getParentLevel json
     else pure filtered
   return searched
   where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')
@@ -59,7 +58,7 @@ run args file = do
         getParentLevel = let (Parent level) = fromMaybe (Parent 0) $ find isParent args
                          in level
 
-parseFile :: String -> Parser Json -> IO (Json)
+parseFile :: String -> Parser Json -> IO Json
 parseFile file parser = do
   content <- open file
   let result = parse parser $ inputFrom content

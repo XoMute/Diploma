@@ -43,10 +43,11 @@ data Query
   | Array ArrayIndex
   | Pipe
   | Field String
-  | QueryNumber Double
   | Comma
   | Compare Comparison
+  | QueryNumber Double
   | QueryString String
+  | QueryBool Bool
   deriving (Show, Eq)
 
 dot :: Parser Query
@@ -57,6 +58,12 @@ pipe = Pipe <$ (ws1 *> char '|' <* ws1)
 
 comma :: Parser Query
 comma = Comma <$ (ws *> char ',' <* ws)
+
+queryTrue :: Parser Query
+queryTrue = QueryBool True <$ string "true"
+
+queryFalse :: Parser Query
+queryFalse = QueryBool False <$ string "false"
 
 index :: Parser ArrayIndex
 index = Index <$> number
@@ -74,12 +81,15 @@ array = Array <$> (
   between index (char '[') (char ']') <|>
   between indexRange (char '[') (char ']'))
 
+fieldNameChar :: Parser Char
+fieldNameChar = parseWhen (\c -> isDigit c || isLetter c || c == '_')
+
 -- TODO: https://jsonapi.org/format/#document-member-names
 field :: Parser Query
-field = Field <$> some character -- do
-  -- c1   <- parseWhen isLetter
-  -- rest <- many $ parseWhen (\c -> isDigit c || isLetter c)
-  --  return (c1:rest)
+field = Field <$> do
+  c1   <- parseWhen (\c -> isLetter c || c == '_')
+  rest <- many $ fieldNameChar
+  return (c1:rest)
 
 queryNumber :: Parser Query
 queryNumber = QueryNumber <$> (ws *> double)
@@ -98,6 +108,8 @@ comparison = Compare <$> (ws *> (le <|> ge <|> lt <|> gt <|> eq <|> neq) <* ws)
 
 query :: Parser [Query]
 query = many $ oneOf [
+  queryTrue,
+  queryFalse,
   array,
   dot,
   comma,

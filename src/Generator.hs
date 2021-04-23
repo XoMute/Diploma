@@ -1,7 +1,8 @@
 module Generator
   (
     prettyPrint,
-    generate
+    generate,
+    showQuery
   )
 where
 import JsonParser (Json(JsonNull,
@@ -10,6 +11,7 @@ import JsonParser (Json(JsonNull,
                         JsonNumber,
                         JsonArray,
                         JsonObject))
+import QueryParser
 import Data.List
 
 type Indent = Int
@@ -84,3 +86,38 @@ generate (JsonObject elements) =
   intercalate "," $
   map (\(name, value) -> between "\"" "\"" name ++ ":" ++ generate value) elements
 
+------------- QUERY ---------------
+
+showQuery :: Query -> String
+showQuery Dot = "'.'"
+showQuery (Array EmptyArray) = "'[]'"
+showQuery (Array (Index i)) = "'[" ++ show i ++ "]'"
+showQuery (Array (IndexRange (l, r))) = "'[" ++ show l ++ ":" ++ show r ++ "]'"
+showQuery Pipe = "'|'"
+showQuery Comma = "','"
+showQuery (Field f) = "Field name '" ++ f ++ "'"
+showQuery q = show q
+
+-- data Comparison
+--   = LT
+--   | LE
+--   | GT
+--   | GE
+--   | EQ
+--   | NEQ
+--   deriving (Show, Eq, Data)
+
+-- data ArrayIndex
+--   = EmptyArray
+--   | Index Int
+--   | IndexRange (Int, Int) -- (inclusive, exclusive)
+--   deriving (Show, Eq, Data)
+
+-- data Query
+--   | Pipe
+--   | Field String
+--   | QueryNumber Double
+--   | Comma
+--   | Compare Comparison
+--   | QueryString String
+--   deriving (Show, Eq, Typeable, Data)
