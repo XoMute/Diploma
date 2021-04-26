@@ -21,6 +21,7 @@ data Flag
   | Parent Int         -- -p
   | One                -- -o
   | Minimize           -- -m
+  | Indentation Int    -- -i
   | Help               -- --help
   deriving (Show, Eq, Ord, Typeable, Data)
 
@@ -39,6 +40,10 @@ isParent :: Flag -> Bool
 isParent (Parent _) = True
 isParent f = False
 
+isIndent :: Flag -> Bool
+isIndent (Indentation _) = True
+isIndent f = False
+
 flags =
   [Option  ['f'] ["filter"]   (ReqArg Filter "EXPR")
     "Filter json by given expression."
@@ -52,6 +57,8 @@ flags =
     "Return only first result of filter or search."
    ,Option ['m'] ["minimize"] (NoArg Minimize)
     "Minimize json output."
+   ,Option ['i'] ["indent"]   (ReqArg (Indentation . read) "NUM")
+    "Number of spaces in indentation."
    ,Option ['h'] ["help"]     (NoArg Help)
      "Display this help and exit."
   ]

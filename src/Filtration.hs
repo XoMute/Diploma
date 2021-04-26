@@ -103,41 +103,48 @@ slice l r = take (r - l) . drop l
 
   --------------------- SEARCHING -----------------------
 -- NOTE: search won't go :down if it found correct object
-searchJson :: [Query] -> Int -> Json -> IO [Json]
+searchJson :: [Query] -> Int -> Json -> IO [(Json, Int)]
 searchJson [] _ _  = die "Query can't be empty."
- -- TODO: think about parents
-searchJson q@(Field f:[]) p (JsonArray js) =
-  concat <$> mapM (searchJson q p) js
+searchJson q@(Field f:[]) p json@(JsonArray js) =
+  concat <$> mapM (searchWithParent q p json) js
 
 searchJson q@(Field f:[]) p json@(JsonObject js) =
- -- TODO: think about parents
   case lookup f js of
-    Just _  -> pure [json]
-    Nothing -> searchDown q p js
+    Just _  -> pure [(json, 0)]
+    Nothing -> searchDown q p js >>= return . map (resultToParent p json)
 
 searchJson (Field _:[]) _ _ = pure []
 
-searchJson qs@(Field f:Compare _:_:[]) p (JsonArray js) =
-  concat <$> mapM (searchJson qs p) js
+searchJson qs@(Field f:Compare _:_:[]) p json@(JsonArray js) =
+  concat <$> mapM (searchWithParent qs p json) js
 
 searchJson qs@(Field f:cmp@(Compare _):q:[]) p json@(JsonObject js) =
   case lookup f js of
     Just v  -> do
       res <- filterCompare cmp q v
       if res then
-        pure [json]
-        else searchDown qs p js
-    Nothing -> searchDown qs p js
+        pure [(json, 0)]
+        else searchHelper qs p js
+    Nothing -> searchHelper qs p js
+  where searchHelper qs p js = searchDown qs p js >>= return . map (resultToParent p json)
 
 searchJson (Field _:Compare _:_:[]) p json = pure []
 
 searchJson qs _ _= die "Search query is wrong. Possible search queries:\n - \"FIELD_NAME\"\n - \"FIELD_NAME *COMPARE* LITERAL_VALUE\""
 
-searchDown :: [Query] -> Int -> [(a, Json)] -> IO [Json]
+searchDown :: [Query] -> Int -> [(a, Json)] -> IO [(Json, Int)]
 searchDown qs p js =
   concat <$>
   (mapM (searchJson qs p) $
    filter containerP $ snd $ unzip js)
+
+searchWithParent :: [Query] -> Int -> Json -> Json -> IO [(Json, Int)]
+searchWithParent q p json j = searchJson q p j >>= pure . map (resultToParent p json)
+
+resultToParent :: Int -> Json -> (Json, Int) -> (Json, Int)
+resultToParent p json (res, level)
+  | level < p = (json, level + 1)
+  | otherwise = (res, level)
 
 containerP :: Json -> Bool
 containerP (JsonArray  _) = True

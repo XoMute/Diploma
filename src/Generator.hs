@@ -30,38 +30,28 @@ trim (x:xs)
 
 ----------- PRETTY PRINT -----------
 
--- TODO: try to do that in this way
--- class (Expr e) => Pretty e where
---     pretty :: e -> String
+prettyPrint :: Indent -> Indent -> Json -> String
+prettyPrint i indent (JsonNull) = spaces i ++ "null"
 
--- instance Pretty Const where
---     pretty (Const x) = show x
--- instance (Pretty a, Pretty b) => Pretty (Add a b) where
---     pretty (Add x y) = "(" ++ pretty x ++ " + " ++ pretty y ++ ")"
--- instance (Pretty a, Pretty b) => Pretty (Mul a b) where
---     pretty (Mul x y) = pretty x ++ " * " ++ pretty y
+prettyPrint i indent (JsonBool True)  = spaces i ++ "true"
+prettyPrint i indent (JsonBool False) = spaces i ++ "false"
 
-prettyPrint :: Indent -> Json -> String
-prettyPrint i (JsonNull) = spaces i ++ "null"
+prettyPrint i indent (JsonString str) = spaces i ++ between "\"" "\"" str
 
-prettyPrint i (JsonBool True) = spaces i ++ "true"
-prettyPrint i (JsonBool False) = spaces i ++ "false"
+prettyPrint i indent (JsonNumber num) = spaces i ++ show num
 
-prettyPrint i (JsonString str) = spaces i ++ between "\"" "\"" str
-
-prettyPrint i (JsonNumber num) = spaces i ++ show num
-
-prettyPrint i (JsonArray []) = "[]"
-prettyPrint i (JsonArray elements) =
+prettyPrint i indent (JsonArray [])       = "[]"
+prettyPrint i indent (JsonArray elements) =
   between (spaces i ++ "[\n") ("\n" ++ spaces i ++ "]") $
-  intercalate ",\n" (map (prettyPrint (i + 2)) elements)
+  intercalate ",\n" (map (prettyPrint (i + indent) indent) elements)
 
-prettyPrint i (JsonObject []) = "{}"
-prettyPrint i (JsonObject elements) =
+prettyPrint i indent (JsonObject []) = "{}"
+prettyPrint i indent (JsonObject elements) =
   between (spaces i ++ "{\n") ("\n" ++ spaces i ++ "}") $
   intercalate ",\n" $
-  map (\(name, value) -> between (spaces (i + 2) ++ "\"") "\"" name ++ ": " ++ trim (prettyPrint (i + 2) value)) elements
--- TODO: figure out something better than 'trim'
+  map (\(name, value) -> between (spaces (i + indent) ++ "\"") "\"" name ++
+                         ": " ++
+                         trim (prettyPrint (i + indent) indent value)) elements
 
 ----------- GENERATION -----------
 

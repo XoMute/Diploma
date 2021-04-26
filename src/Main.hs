@@ -23,8 +23,14 @@ main = do
               else js
   let jsons = if Minimize `elem` args
               then map generate res
-              else map (prettyPrint 0) res
+              else map (prettyPrint 0 $ getIndent args) res
   mapM_ putStrLn jsons
+  where getIndent args =
+          let (Indentation i) = fromMaybe (Indentation 4) $ find isIndent args
+          in if i < 0
+             then 0
+             else i
+
 
 run :: [Flag] -> String -> IO [Json]
 run [] file = (:[]) <$> parseFile file jsonParser
@@ -48,8 +54,8 @@ run args file = do
         -- pure []
         die "No object found."
       else if One `elem` args then
-             pure [head res]
-           else pure res
+             pure [fst $ head res]
+           else pure $ map fst res
     else pure filtered
   return searched
   where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')
