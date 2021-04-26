@@ -17,10 +17,9 @@ import System.Exit
 main :: IO ()
 main = do
   (args, files) <- getArgs >>= parseArgs
-  -- TODO: unparsed argument should be just ONE file
   js <- run (reverse args) (head files)
   let res   = if Duplicates `elem` args
-              then map removeDuplicates js
+              then nub js
               else js
   let jsons = if Minimize `elem` args
               then map generate res
@@ -40,11 +39,17 @@ run args file = do
     do
       let query = resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
       filterJson query json
-    else filterJson [] json
+    else pure [json]
   searched <- if hasSearch then
     do
       let query = resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
-      searchJson query getParentLevel json
+      res <- searchJson query getParentLevel json
+      if null res then
+        -- pure []
+        die "No object found."
+      else if One `elem` args then
+             pure [head res]
+           else pure res
     else pure filtered
   return searched
   where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')

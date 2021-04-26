@@ -107,18 +107,21 @@ comparison = Compare <$> (ws *> (le <|> ge <|> lt <|> gt <|> eq <|> neq) <* ws)
         neq = const QueryParser.NEQ <$> string "!="
 
 query :: Parser [Query]
-query = many $ oneOf [
-  queryTrue,
-  queryFalse,
-  array,
-  dot,
-  comma,
-  pipe,
-  field,
-  queryNumber,
-  queryString,
-  comparison
-  ]
+query = ws *> qs <* ws
+  where qs =
+          many $
+          oneOf [
+              queryTrue,
+              queryFalse,
+              array,
+              dot,
+              comma,
+              pipe,
+              field,
+              queryNumber,
+              queryString,
+              comparison
+              ]
 
 queryParser :: Parser [Query]
 queryParser = failIfNotFinished query

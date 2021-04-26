@@ -34,10 +34,14 @@
         "id": 1,
         "name": "Wilder Deleon"
       },
+          {
+        "id": 0,
+        "name": "Brennan Merritt"
+      },
       {
-        "id": 2,
-        "name": "Teresa Britt"
-      }
+       "id": 2,
+       "name": "Teresa Britt"
+       }
     ],
     "greeting": "Hello, Wagner Calhoun! You have 9 unread messages.",
     "favoriteFruit": "banana"

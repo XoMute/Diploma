@@ -101,19 +101,52 @@ getField name json =
 slice :: Int -> Int -> [a] -> [a]
 slice l r = take (r - l) . drop l
 
---------------------- DUPLICATES -----------------------
-
--- TODO: implement for array and object
-removeDuplicates :: Json -> Json
-removeDuplicates json = undefined
-
   --------------------- SEARCHING -----------------------
+-- NOTE: search won't go :down if it found correct object
 searchJson :: [Query] -> Int -> Json -> IO [Json]
-searchJson = undefined
+searchJson [] _ _  = die "Query can't be empty."
+ -- TODO: think about parents
+searchJson q@(Field f:[]) p (JsonArray js) =
+  concat <$> mapM (searchJson q p) js
+
+searchJson q@(Field f:[]) p json@(JsonObject js) =
+ -- TODO: think about parents
+  case lookup f js of
+    Just _  -> pure [json]
+    Nothing -> searchDown q p js
+
+searchJson (Field _:[]) _ _ = pure []
+
+searchJson qs@(Field f:Compare _:_:[]) p (JsonArray js) =
+  concat <$> mapM (searchJson qs p) js
+
+searchJson qs@(Field f:cmp@(Compare _):q:[]) p json@(JsonObject js) =
+  case lookup f js of
+    Just v  -> do
+      res <- filterCompare cmp q v
+      if res then
+        pure [json]
+        else searchDown qs p js
+    Nothing -> searchDown qs p js
+
+searchJson (Field _:Compare _:_:[]) p json = pure []
+
+searchJson qs _ _= die "Search query is wrong. Possible search queries:\n - \"FIELD_NAME\"\n - \"FIELD_NAME *COMPARE* LITERAL_VALUE\""
+
+searchDown :: [Query] -> Int -> [(a, Json)] -> IO [Json]
+searchDown qs p js =
+  concat <$>
+  (mapM (searchJson qs p) $
+   filter containerP $ snd $ unzip js)
+
+containerP :: Json -> Bool
+containerP (JsonArray  _) = True
+containerP (JsonObject _) = True
+containerP json           = False
 
 ----------------------- SEMANTIC CHECK ------------------
 semanticCheckForFilter :: [Query] -> IO [Query]
-semanticCheckForFilter [] = die "Query is empty." -- todo: change
+semanticCheckForFilter [] = die "Query can't be empty."
 semanticCheckForFilter qs = do
   case head qs of
     Dot -> semCheck qs
@@ -125,9 +158,7 @@ semCheck (q@Dot: qs@(Field _:_))   = semCheck qs >>= pure . (q:)
 semCheck (q@Dot: qs@(Compare _:_)) = semCheck qs >>= pure . (q:)
 semCheck q@(Dot:[]) = pure q
 
---semCheck (q@(Array EmptyArray): qs@(Dot:_))       = semCheck qs >>= pure . (q:)
 semCheck (q@(Array (Index _)):  qs@(Dot:_))        = semCheck qs >>= pure . (q:)
---semCheck (q@(Array EmptyArray): qs@(Compare _:_)) = semCheck qs >>= pure . (q:)
 semCheck (q@(Array (Index _)):  qs@(Compare _:_))  = semCheck qs >>= pure . (q:)
 semCheck q@(Array _:[]) = pure q
 
