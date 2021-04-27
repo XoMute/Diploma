@@ -1,7 +1,7 @@
 module Filtration where
 import QueryParser
 import JsonParser
-import Generator (showQuery)
+import Generator
 
 import Data.List.Split
 import Data.List
@@ -95,8 +95,8 @@ getField name json =
   case json of
     JsonObject l -> case lookup name l of
                       Just v -> pure v
-                      Nothing -> die $ "Can't get field " ++ name ++ " from json " ++ show json
-    otherwise -> die $ "Can't get field " ++ name ++ ": json is not an object " ++ show json -- todo: improve errors
+                      Nothing -> die $ "Can't get field \"" ++ name ++ "\" from given JSON value"
+    otherwise -> die $ "Can't get field \"" ++ name ++ "\": given JSON value is not an object "
 
 slice :: Int -> Int -> [a] -> [a]
 slice l r = take (r - l) . drop l

@@ -67,7 +67,7 @@ readInt :: Maybe String -> Maybe Int
 readInt m = m >>= readMaybe
 
 -- returns all parsed flags and unparsed arguments
-parseArgs :: [String] -> IO ([Flag], [String])
+parseArgs :: [String] -> IO ([Flag], String)
 parseArgs argv = case getOpt Permute flags argv of
 
   (args, fs, []) -> do
@@ -77,7 +77,7 @@ parseArgs argv = case getOpt Permute flags argv of
               exitWith ExitSuccess
       else if length files > 1 then
              die "Only one file should be provided."
-      else return (nub args, files)
+      else return (nub args, head files)
 
   (_, _, errs)   -> do
     hPutStrLn stderr (concat errs ++ usageInfo helpMessage flags)

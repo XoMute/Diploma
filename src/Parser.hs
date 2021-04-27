@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-} -- todo: read about this
+{-# LANGUAGE OverloadedStrings #-}
 
 module Parser
   -- (
@@ -15,24 +16,33 @@ module Parser
 where
 
 import Control.Applicative
-import Control.Monad (guard)
+import Control.Monad
 import Data.Char (isDigit)
+import Data.Function
+import qualified Data.ByteString.Lazy.Char8 as L
 
+--               col  line
 type Position = (Int, Int)
-data Input = Input { pos :: Position, input :: String } deriving (Show, Eq) -- todo: do I need Eq?
+data Input = Input { pos :: Position, inputStr :: L.ByteString } deriving (Show, Eq) -- todo: do I need Eq?
 
--- constructor
-inputFrom :: String -> Input
+inputFrom :: L.ByteString -> Input
 inputFrom = Input (1, 1)
 
 -- Get first character from input if it is present
 nextChar :: Input -> Maybe (Char, Input)
 nextChar (Input _ "") = Nothing
-nextChar (Input (posX, posY) (x:xs))
+nextChar (Input (posX, posY) inp)
   | x == '\n' = Just (x, Input (1, posY + 1) xs)
   | otherwise = Just (x, Input (posX + 1, posY) xs)
+  where x =  L.head inp
+        xs = L.tail inp
+--                                    expected  actual
+data ParseError = ParseError Position String    String
 
-data ParseError = ParseError Position String deriving (Show)
+instance Show ParseError where
+  show (ParseError (column, line) expected actual) = "Line: " ++ show line ++ ", column: " ++
+                                             show column ++ "\nUnexpected " ++ actual ++
+                                             "\nExpecting " ++ expected
 
 newtype Parser a = Parser { parse :: Input -> Either ParseError (a, Input) }
 
@@ -51,38 +61,62 @@ instance Applicative Parser where
       (v, rest') <- p rest
       pure (f v, rest')
 
--- todo: do I need this code?
-instance Alternative (Either ParseError) where
-  empty = Left $ ParseError (0, 0) ""
-  Left _ <|> r = r
-  l <|> _ = l
-
-instance Alternative Parser where
-  empty = Parser $ const empty
-  (Parser p1) <|> (Parser p2) = Parser $ \input ->
-    p1 input <|> p2 input
-
 instance Monad Parser where
   return a = Parser $ \input -> pure (a, input)
   p >>= f = Parser $ \input ->
     case parse p input of
       Right (p', cs) -> parse (f p') cs
       Left error -> Left error
-  fail message = Parser $ \input -> Left $ ParseError (pos input) message
 
--- check if input is left and throw an error if it is
-failIfNotFinished :: Parser a -> Parser a
-failIfNotFinished p = Parser $ \inp ->
+instance Alternative Parser where
+-- empty parser always fails without consuming input
+  empty = Parser $ \input -> Left $ ParseError (pos input) "" ""
+-- It fails if left parser consumed input
+  (Parser p1) <|> (Parser p2) = Parser $ \input ->
+    let originalPos = pos input
+        res1        = p1 input
+    in
+       case res1 of
+         Left (ParseError position _ _) ->
+           if position /= originalPos
+           then res1
+           else p2 input
+         Right _ -> res1
+
+-- check if input is left and return left if it is
+failIfNotFinished :: Parser a -> String -> Parser a
+failIfNotFinished p exp = Parser $ \inp ->
   let result = parse p inp in
     case result of
       Right (_, inp') ->
-        if null (input inp')
+        if L.null (inputStr inp')
         then result
-        else error $ "Could not parse input to the end: " ++ (input inp')
+        else Left $ ParseError (pos inp') exp $ (L.unpack $ inputStr inp')
       otherwise -> result
+
+-- returns parser that will not consume input in case of failing
+try :: Parser a -> Parser a
+try (Parser p) = Parser $ \input ->
+    case p input of
+      Left (ParseError _ exp act) -> Left (ParseError (pos input) exp act)
+      res -> res
+
+-- returns parser that will always consume input in case of failing
+failing :: Parser a -> Parser a
+failing (Parser p) = Parser $ \input ->
+  case p input of
+      Left (ParseError (c, l) exp act) -> Left (ParseError (c + 1, l) exp act)
+      res -> res
+
+-- returns parser with given error message
+errorParser :: String -> Parser a
+errorParser message = Parser $ \input -> Left (ParseError (pos input) message (L.unpack $ inputStr input))
 
 oneOf :: [Parser a] -> Parser a
 oneOf = foldl (<|>) empty
+
+tryOneOf :: [Parser a] -> Parser a
+tryOneOf = foldl ((<|>) `on` try) empty
 
 manySepBy :: Parser a -> Parser b -> Parser [a]
 manySepBy p delim = manySepBy1 p delim <|> empty
@@ -105,19 +139,19 @@ char c = Parser f
     f input =
       case nextChar input of
         Nothing -> Left $
-          ParseError (pos input) "EOF"
+          ParseError (pos input) (quote c) "end of input"
         Just (x, input') ->
           if c == x then Right (c, input')
           else Left $
-               ParseError (pos input) ((quote c) ++ " expected, but found " ++ (quote x))
+               ParseError (pos input) (quote c) (quote x)
 
 whitespace :: Parser Char
 whitespace = oneOf [char '\n', char '\r', char '\t', char ' ']
 
-ws :: Parser String
+ws :: Parser String -- L.Text
 ws = many whitespace
 
-ws1 :: Parser String
+ws1 :: Parser String -- L.Text
 ws1 = some whitespace
 
 character :: Parser Char
@@ -127,7 +161,7 @@ character =
   escape
 
 escape :: Parser Char
-escape = oneOf [
+escape = tryOneOf [
   ('"'  <$ string "\\\""),
   ('\\' <$ string "\\\\"),
   ('/'  <$ string "\\/"),
@@ -142,11 +176,10 @@ escape = oneOf [
 -- escapeUnicode = 
 
 string :: String -> Parser String
-string "" = Parser $ \input -> Right ("", input)
-string (c:cs) = do
-  char c
-  string cs
-  return (c:cs)
+string s = Parser $ \input ->
+  case parse (traverse char s) input of
+    Left (ParseError pos _ _) -> Left (ParseError pos ("\"" ++ s ++ "\"") (L.unpack $ inputStr input)) -- TODO: rewrite unexpected part
+    res -> res
 
 -- constructs Double from given parsed parts
 constructDouble :: Integer -> Integer -> Double -> Integer -> Double
@@ -180,9 +213,9 @@ parseWhen :: (Char -> Bool) -> Parser Char
 parseWhen pred = Parser $ \input ->
   case nextChar input of
     Nothing -> Left $
-      ParseError (pos input) "EOF"
+      ParseError (pos input) "Next character" "end of input"
     Just (x, input') ->
       if pred x then Right (x, input')
       else Left $
-           ParseError (pos input) (quote x)
+           ParseError (pos input) "" (quote x)
 

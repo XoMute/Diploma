@@ -9,6 +9,9 @@ import CommandLine
 
 import Data.List
 import Data.Maybe
+-- import qualified Data.Text.Lazy    as L
+-- import qualified Data.Text.Lazy.IO as LI
+import qualified Data.ByteString.Lazy.Char8 as L
 import Control.Monad
 import Control.Applicative
 import System.Environment
@@ -16,8 +19,8 @@ import System.Exit
 
 main :: IO ()
 main = do
-  (args, files) <- getArgs >>= parseArgs
-  js <- run (reverse args) (head files)
+  (args, file) <- getArgs >>= parseArgs
+  js <- run (reverse args) file
   let res   = if Duplicates `elem` args
               then nub js
               else js
@@ -31,7 +34,6 @@ main = do
              then 0
              else i
 
-
 run :: [Flag] -> String -> IO [Json]
 run [] file = (:[]) <$> parseFile file jsonParser
 
@@ -43,15 +45,14 @@ run args file = do
   json <- parseFile file jsonParser
   filtered <- if hasFilter then
     do
-      let query = resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
+      query <- resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
       filterJson query json
     else pure [json]
   searched <- if hasSearch then
     do
-      let query = resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
+      query <- resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
       res <- searchJson query getParentLevel json
       if null res then
-        -- pure []
         die "No object found."
       else if One `elem` args then
              pure [fst $ head res]
@@ -63,9 +64,9 @@ run args file = do
         hasParent = optionIsPresent (Parent 0) args
 
         getFilterQuery = let (Filter query) = fromJust $ find isFilter args
-                         in query
+                         in L.pack query
         getSearchQuery = let (Search query) = fromJust $ find isSearch args
-                         in query
+                         in L.pack query
         getParentLevel = let (Parent level) = fromMaybe (Parent 0) $ find isParent args
                          in level
 
@@ -73,7 +74,21 @@ parseFile :: String -> Parser Json -> IO Json
 parseFile file parser = do
   content <- open file
   let result = parse parser $ inputFrom content
-  return $ resultToJson result
+  resultToJson result
   where
-    open f = if f == "-" then getContents else readFile f
+    open f = if f == "-" then L.pack <$> getContents else L.readFile f
+
+resultToJson :: Either ParseError (Json, Input) -> IO Json
+resultToJson result =
+  either
+    (\err -> die $ show err)
+    (\(json, _) -> pure json)
+    result
+
+resultToQuery :: Either ParseError ([Query], Input) -> IO [Query]
+resultToQuery result =
+  either
+    (\err -> die $ show err)
+    (\(query, _) -> pure query)
+    result
 

@@ -54,7 +54,7 @@ dot :: Parser Query
 dot = Dot <$ char '.'
 
 pipe :: Parser Query
-pipe = Pipe <$ (ws1 *> char '|' <* ws1)
+pipe = Pipe <$ (ws *> char '|' <* ws)
 
 comma :: Parser Query
 comma = Comma <$ (ws *> char ',' <* ws)
@@ -71,15 +71,15 @@ index = Index <$> number
 indexRange :: Parser ArrayIndex
 indexRange = do
   left <- number
-  char ':' -- TODO: error if not found
-  right <- number -- TODO: fail if nothing? Or even error
+  char ':'
+  right <- number
   return $ IndexRange (left, right)
 
 array :: Parser Query
 array = Array <$> (
-  between (const EmptyArray <$> ws) (char '[') (char ']') <|>
-  between index (char '[') (char ']') <|>
-  between indexRange (char '[') (char ']'))
+  try (between (const EmptyArray <$> ws) (char '[') (char ']')) <|>
+  try (between index (char '[') (char ']')) <|>
+  between (failing indexRange) (char '[') (char ']'))
 
 fieldNameChar :: Parser Char
 fieldNameChar = parseWhen (\c -> isDigit c || isLetter c || c == '_')
@@ -98,19 +98,21 @@ queryString :: Parser Query
 queryString = QueryString <$> between (many character) (char '"') (char '"')
 
 comparison :: Parser Query
-comparison = Compare <$> (ws *> (le <|> ge <|> lt <|> gt <|> eq <|> neq) <* ws)
+comparison = Compare <$> (ws *> tryOneOf [le, ge, lt, gt, eq, neq, err] <* ws)
   where lt  = const QueryParser.LT  <$> string "<"
         le  = const QueryParser.LE  <$> string "<="
         gt  = const QueryParser.GT  <$> string ">"
         ge  = const QueryParser.GE  <$> string ">="
         eq  = const QueryParser.EQ  <$> string "=="
         neq = const QueryParser.NEQ <$> string "!="
+        err = errorParser "comparison"
 
+-- since queries will be much more shorter than JSONs - backtracking is not bad here
 query :: Parser [Query]
 query = ws *> qs <* ws
   where qs =
           many $
-          oneOf [
+          tryOneOf [
               queryTrue,
               queryFalse,
               array,
@@ -124,11 +126,5 @@ query = ws *> qs <* ws
               ]
 
 queryParser :: Parser [Query]
-queryParser = failIfNotFinished query
+queryParser = failIfNotFinished query "correct query"
 
-resultToQuery :: Either ParseError ([Query], Input) -> [Query]
-resultToQuery result =
-  either
-    (\err -> error $ "AAA " ++ show err) -- TODO: rewrite
-    (\(query, _) -> query)
-    result

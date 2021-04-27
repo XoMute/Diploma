@@ -1,7 +1,9 @@
 module JsonParser where
 import Parser
 import Control.Applicative
+import Data.Char
 import Data.List
+import Data.ByteString.Lazy.Char8 (unpack)
 
 data Json
   = JsonNull
@@ -33,6 +35,16 @@ jsonFalse = JsonBool False <$ string "false"
 jsonString :: Parser Json
 jsonString = JsonString <$> between (many character) (char '"') (char '"')
 
+jsonKey :: Parser Json
+jsonKey = JsonString <$> between field (char '"') (char '"') -- TODO: rewrite
+  where field = do
+          c1   <- parseWhen (\c -> isLetter c || c == '_')
+          rest <- many $ fieldNameChar
+          return (c1:rest)
+
+fieldNameChar :: Parser Char
+fieldNameChar = parseWhen (\c -> isDigit c || isLetter c || c == '_')
+
 jsonNumber :: Parser Json
 jsonNumber = JsonNumber <$> double
 
@@ -40,26 +52,26 @@ element :: Parser Json
 element = ws *> jsonValue <* ws
 
 jsonArray :: Parser Json
-jsonArray = JsonArray <$> (between (const [] <$> ws) (char '[') (char ']')
+jsonArray = JsonArray <$> (try (between (const [] <$> ws) (char '[') (char ']'))
                       <|>  between elements (char '[') (char ']'))
   where
-    elements = manySepBy element (char ',')
+    elements = manySepBy (failing element) (char ',')
 
 jsonObject :: Parser Json
 jsonObject = JsonObject <$>
-  (between (const [] <$> ws) (char '{') (char '}')
+  (try (between (const [] <$> ws) (char '{') (char '}'))
    <|> between members (char '{') (char '}'))
   where
     member = do
       ws
-      jsonKey <- jsonString
+      key <- jsonKey
       ws
       char ':'
       value <- element
-      case jsonKey of
-        JsonString key -> return (key, value)
+      case key of
+        JsonString k -> return (k, value)
         _ -> empty
-    members = manySepBy member (char ',')
+    members = manySepBy (failing member) (char ',')
 
 jsonValue :: Parser Json
 jsonValue = oneOf [
@@ -69,15 +81,10 @@ jsonValue = oneOf [
   jsonString,
   jsonTrue,
   jsonFalse,
-  jsonNull]
+  jsonNull,
+  errorParser "JSON value"]
 
 -- Usage: parse jsonParser *input*
 jsonParser :: Parser Json
 jsonParser = element
 
-resultToJson :: Either ParseError (Json, Input) -> Json
-resultToJson result =
-  either
-    (\err -> JsonString $ show err)
-    (\(json, _) -> json)
-    result
