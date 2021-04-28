@@ -9,8 +9,6 @@ import CommandLine
 
 import Data.List
 import Data.Maybe
--- import qualified Data.Text.Lazy    as L
--- import qualified Data.Text.Lazy.IO as LI
 import qualified Data.ByteString.Lazy.Char8 as L
 import Control.Monad
 import Control.Applicative
@@ -46,17 +44,20 @@ run args file = do
   filtered <- if hasFilter then
     do
       query <- resultToQuery $ parse queryParser (inputFrom $ getFilterQuery)
-      filterJson query json
+      either die pure
+        $ filterJson query json
     else pure [json]
   searched <- if hasSearch then
     do
       query <- resultToQuery $ parse queryParser (inputFrom $ getSearchQuery)
-      res <- searchJson query getParentLevel json
-      if null res then
-        die "No object found."
-      else if One `elem` args then
-             pure [fst $ head res]
-           else pure $ map fst res
+      case searchJson query getParentLevel json of
+        Left err -> die err
+        Right res ->
+          if null res then
+            die "No object found."
+          else if One `elem` args then
+                 pure [fst $ head res]
+          else pure $ map fst res
     else pure filtered
   return searched
   where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')

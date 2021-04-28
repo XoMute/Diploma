@@ -109,7 +109,7 @@ comparison = Compare <$> (ws *> tryOneOf [le, ge, lt, gt, eq, neq, err] <* ws)
 
 -- since queries will be much more shorter than JSONs - backtracking is not bad here
 query :: Parser [Query]
-query = ws *> qs <* ws
+query = (ws *> qs <* ws) >>= eof
   where qs =
           many $
           tryOneOf [
@@ -126,5 +126,5 @@ query = ws *> qs <* ws
               ]
 
 queryParser :: Parser [Query]
-queryParser = failIfNotFinished query "correct query"
+queryParser = query
 

@@ -36,7 +36,7 @@ jsonString :: Parser Json
 jsonString = JsonString <$> between (many character) (char '"') (char '"')
 
 jsonKey :: Parser Json
-jsonKey = JsonString <$> between field (char '"') (char '"') -- TODO: rewrite
+jsonKey = JsonString <$> between field (char '"') (char '"')
   where field = do
           c1   <- parseWhen (\c -> isLetter c || c == '_')
           rest <- many $ fieldNameChar
@@ -86,5 +86,5 @@ jsonValue = oneOf [
 
 -- Usage: parse jsonParser *input*
 jsonParser :: Parser Json
-jsonParser = element
+jsonParser = element >>= eof
 

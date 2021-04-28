@@ -145,6 +145,12 @@ char c = Parser f
           else Left $
                ParseError (pos input) (quote c) (quote x)
 
+eof :: a -> Parser a
+eof val = Parser $ \input ->
+  if L.length (inputStr input) > 0
+  then Left (ParseError (pos input) "end of file" (L.unpack $ inputStr input))
+  else pure (val, input)
+
 whitespace :: Parser Char
 whitespace = oneOf [char '\n', char '\r', char '\t', char ' ']
 
