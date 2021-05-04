@@ -1,6 +1,6 @@
 module Generator
   (
-    prettyPrint,
+    prettify,
     generate,
     showQuery
   )
@@ -29,6 +29,9 @@ trim (x:xs)
   | otherwise = x:xs
 
 ----------- PRETTY PRINT -----------
+
+prettify :: Indent -> Json -> String
+prettify = prettyPrint 0
 
 prettyPrint :: Indent -> Indent -> Json -> String
 prettyPrint i indent (JsonNull) = spaces i ++ "null"

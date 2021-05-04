@@ -2,7 +2,7 @@ module Main where
 
 import Parser
 import JsonParser
-import Generator (generate, prettyPrint)
+import Generator (generate, prettify)
 import QueryParser
 import Filtration
 import CommandLine
@@ -24,7 +24,7 @@ main = do
               else js
   let jsons = if Minimize `elem` args
               then map generate res
-              else map (prettyPrint 0 $ getIndent args) res
+              else map (prettify $ getIndent args) res
   mapM_ putStrLn jsons
   where getIndent args =
           let (Indentation i) = fromMaybe (Indentation 4) $ find isIndent args
@@ -56,8 +56,8 @@ run args file = do
           if null res then
             die "No object found."
           else if One `elem` args then
-                 pure [fst $ head res]
-          else pure $ map fst res
+                 pure [head res]
+          else pure res
     else pure filtered
   return searched
   where hasFilter = optionIsPresent (Filter "") args -- todo: replace all has* with checking of get*Query result (with removed `fromJust')

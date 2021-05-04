@@ -6,6 +6,7 @@ import Generator
 import Data.List.Split
 import Data.List
 import Control.Monad
+import Control.Applicative (liftA)
 import System.Exit
 
 --------------------- FILTERING -----------------------
@@ -102,22 +103,25 @@ slice l r = take (r - l) . drop l
 
   --------------------- SEARCHING -----------------------
 -- NOTE: search won't go :down if it found correct object
-searchJson :: [Query] -> Int -> Json -> Either String [(Json, Int)]
-searchJson [] _ _  = Left "Query can't be empty."
-searchJson q@(Field f:[]) p json@(JsonArray js) =
+searchJson :: [Query] -> Int -> Json -> Either String [Json]
+searchJson qs p json = liftA (map fst) $ searchJsonWithParentInfo qs p json
+
+searchJsonWithParentInfo :: [Query] -> Int -> Json -> Either String [(Json, Int)]
+searchJsonWithParentInfo [] _ _  = Left "Query can't be empty."
+searchJsonWithParentInfo q@(Field f:[]) p json@(JsonArray js) =
   concat <$> mapM (searchWithParent q p json) js
 
-searchJson q@(Field f:[]) p json@(JsonObject js) =
+searchJsonWithParentInfo q@(Field f:[]) p json@(JsonObject js) =
   case lookup f js of
     Just _  -> pure [(json, 0)]
     Nothing -> searchDown q p js >>= return . map (resultToParent p json)
 
-searchJson (Field _:[]) _ _ = pure []
+searchJsonWithParentInfo (Field _:[]) _ _ = pure []
 
-searchJson qs@(Field f:Compare _:_:[]) p json@(JsonArray js) =
+searchJsonWithParentInfo qs@(Field f:Compare _:_:[]) p json@(JsonArray js) =
   concat <$> mapM (searchWithParent qs p json) js
 
-searchJson qs@(Field f:cmp@(Compare _):q:[]) p json@(JsonObject js) =
+searchJsonWithParentInfo qs@(Field f:cmp@(Compare _):q:[]) p json@(JsonObject js) =
   case lookup f js of
     Just v  -> do
       res <- filterCompare cmp q v
@@ -127,18 +131,18 @@ searchJson qs@(Field f:cmp@(Compare _):q:[]) p json@(JsonObject js) =
     Nothing -> searchHelper qs p js
   where searchHelper qs p js = searchDown qs p js >>= return . map (resultToParent p json)
 
-searchJson (Field _:Compare _:_:[]) p json = pure []
+searchJsonWithParentInfo (Field _:Compare _:_:[]) p json = pure []
 
-searchJson qs _ _= Left "Search query is wrong. Possible search queries:\n - \"FIELD_NAME\"\n - \"FIELD_NAME *COMPARE* LITERAL_VALUE\""
+searchJsonWithParentInfo qs _ _= Left "Search query is wrong. Possible search queries:\n - \"FIELD_NAME\"\n - \"FIELD_NAME *COMPARE* LITERAL_VALUE\""
 
 searchDown :: [Query] -> Int -> [(a, Json)] -> Either String [(Json, Int)]
 searchDown qs p js =
   concat <$>
-  (mapM (searchJson qs p) $
+  (mapM (searchJsonWithParentInfo qs p) $
    filter containerP $ snd $ unzip js)
 
 searchWithParent :: [Query] -> Int -> Json -> Json -> Either String [(Json, Int)]
-searchWithParent q p json j = searchJson q p j >>= pure . map (resultToParent p json)
+searchWithParent q p json j = searchJsonWithParentInfo q p j >>= pure . map (resultToParent p json)
 
 resultToParent :: Int -> Json -> (Json, Int) -> (Json, Int)
 resultToParent p json (res, level)
