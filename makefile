@@ -1,5 +1,5 @@
 SRC=src/*.hs
-EXEC=bin/Main # TODO: figure out better name
+EXEC=bin/hson # TODO: figure out better name
 FLAGS=-O2
 
 # run: compile

@@ -83,5 +83,5 @@ parseArgs argv = case getOpt Permute flags argv of
     hPutStrLn stderr (concat errs ++ usageInfo helpMessage flags)
     exitWith (ExitFailure 1)
 
-  where helpMessage = "Usage: *some_name* [OPTIONS] [FILES]"
+  where helpMessage = "Usage: hson [OPTIONS] [FILES]"
 

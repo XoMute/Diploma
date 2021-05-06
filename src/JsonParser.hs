@@ -9,7 +9,7 @@ data Json
   = JsonNull
   | JsonBool Bool
   | JsonString String
-  | JsonNumber Double
+  | JsonNumber Number
   | JsonArray [Json]
   | JsonObject [(String, Json)]
   deriving (Show, Ord)

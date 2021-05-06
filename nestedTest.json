@@ -1,40 +1,16 @@
 {
-  "friends": [
-    {
-      "id": 0.0,
-      "name": "Brennan Merritt"
-    },
-    {
-      "friends": [
-        {
-          "id": 25.0,
-          "name": "Peter"
-        },
-        {
-          "id": 123.0,
-          "name": "ok",
-          "moreFriends": [
-            {
-              "id": 452.0,
-              "name": "omg"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": 1.0,
-      "name": "Wilder Deleon"
-    },
-    {
-      "id": 0.0,
-      "name": "Brennan Merritt"
-    },
-    {
-      "id": 2.0,
-      "name": "Teresa Britt"
+    "foo": {
+	"bar": {
+	    "buz": {
+		"qux": [
+		    {
+			"rnd": 2
+		    },
+		    {
+			"ok": true
+		    }
+		]
+	    }
+	}
     }
-  ],
-  "greeting": "Hello, Wagner Calhoun! You have 9 unread messages.",
-  "favoriteFruit": "banana"
 }

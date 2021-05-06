@@ -45,7 +45,7 @@ data Query
   | Field String
   | Comma
   | Compare Comparison
-  | QueryNumber Double
+  | QueryNumber Number
   | QueryString String
   | QueryBool Bool
   deriving (Show, Eq)
@@ -116,13 +116,13 @@ query = (ws *> qs <* ws) >>= eof
               queryTrue,
               queryFalse,
               array,
-              dot,
-              comma,
-              pipe,
               field,
               queryNumber,
               queryString,
-              comparison
+              comparison,
+              dot,
+              comma,
+              pipe
               ]
 
 queryParser :: Parser [Query]

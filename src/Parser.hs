@@ -19,6 +19,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Char (isDigit)
 import Data.Function
+import Data.Maybe
+import Data.Either
 import qualified Data.ByteString.Lazy.Char8 as L
 
 --               col  line
@@ -184,16 +186,49 @@ escape = tryOneOf [
 string :: String -> Parser String
 string s = Parser $ \input ->
   case parse (traverse char s) input of
-    Left (ParseError pos _ _) -> Left (ParseError pos ("\"" ++ s ++ "\"") (L.unpack $ inputStr input)) -- TODO: rewrite unexpected part
+    Left (ParseError pos _ _) -> Left (ParseError pos ("\"" ++ s ++ "\"") (L.unpack $ inputStr input))
     res -> res
 
--- constructs Double from given parsed parts
-constructDouble :: Integer -> Integer -> Double -> Integer -> Double
-constructDouble sign integral decimal exponent =
-  fromIntegral sign * (fromIntegral integral + decimal) * (10 ^^ exponent)
+data Number = Number {
+  sign     :: Integer,
+  integral :: Integer,
+  decimal  :: Maybe Double,
+  expnt    :: Maybe Integer,
+  num      :: Double
+  }
 
--- TODO: save info about number to recreate it successfully
-double :: Parser Double
+instance Show Number where
+  show (Number sign integral decimal expnt _) =
+    showSign                ++
+    (show integral)         ++
+    (maybe "" show decimal) ++
+    showExpnt
+    where showSign  = if sign == 1 then "" else "-"
+          showExpnt = (maybe "" (\val -> "e" ++ show val) expnt)
+
+instance Eq Number where
+  (==) = (==) `on` num
+
+instance Ord Number where
+  compare = (compare) `on` num
+
+constructNumber :: Integer ->
+                   Integer ->
+                   Either Double Double ->
+                   Either Integer Integer ->
+                   Number
+constructNumber sign integral decimal exponent =
+  Number {
+  sign = sign,
+  integral = integral,
+  decimal = either (const Nothing) Just decimal,
+  expnt = either (const Nothing) Just exponent,
+  num = fromIntegral sign *
+        (fromIntegral integral + (fromRight 0.0 decimal))
+        * (10 ^^ (fromRight 0 exponent))
+  }
+
+double :: Parser Number
 double = let minus = (-1) <$ char '-'
              plus = 1 <$ char '+'
              digits = some $ parseWhen isDigit
@@ -202,10 +237,15 @@ double = let minus = (-1) <$ char '-'
              sign <- minus <|> pure 1
              integral <- read <$> digits
              -- append "0." to digits and read result as double
-             decimal <- read <$> (("0." ++) <$> (char '.' *> digits)) <|> pure 0
+             decimal <- ((Right . read) <$> (("0." ++) <$> (char '.' *> digits))) <|> pure (Left 0)
              -- multiply read number by 1 or -1 (depending on sign or it's absence)
-             exponent <- (e *> ((*) <$> (plus <|> minus <|> pure 1) <*> (read <$> digits)) <|> pure 0)
-             return (constructDouble sign integral decimal exponent)
+             exponent <- (e *> (Right <$> (liftA2 (*)
+                                           (plus <|> minus <|> pure 1)
+                                           (read <$> digits))))
+                         <|> pure (Left 0)
+             return (constructNumber sign integral decimal exponent)
+
+-- (liftA (*) ((fromRight 1) <$> (plus <|> minus <|> pure (Right 1))) (read <$> digits))
 
 between :: Parser a -> Parser b -> Parser c -> Parser a
 between p left right = do
