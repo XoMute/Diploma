@@ -4,7 +4,7 @@ import Parser
 import JsonParser
 import Generator (generate, prettify)
 import QueryParser
-import Filtration
+import QueryProcessing
 import CommandLine
 
 import Data.List

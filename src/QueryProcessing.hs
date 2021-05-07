@@ -1,4 +1,4 @@
-module Filtration where
+module QueryProcessing where
 import QueryParser
 import JsonParser
 import Generator
